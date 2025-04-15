@@ -1,24 +1,46 @@
-module.exports = app => {
-    const products = require("../controllers/product.controller.js");
-    const router = require("express").Router();
-  
-    // Tạo sản phẩm mới
-    router.post("/", products.create);
-  
-    // Lấy tất cả sản phẩm (với filter)
-    router.get("/", products.findAll);
-  
-    // Lấy sản phẩm theo category
-    router.get("/category/:category", products.findByCategory);
-  
-    // Lấy một sản phẩm theo id
-    router.get("/:id", products.findOne);
-  
-    // Cập nhật sản phẩm
-    router.put("/:id", products.update);
-  
-    // Xóa sản phẩm
-    router.delete("/:id", products.delete);
-  
-    app.use('/api/products', router);
-  };
+const express = require('express');
+const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const products = require('../controllers/product.controller.js');
+
+// Configure multer for image upload
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ storage: storage });
+
+// Create a new product
+router.post('/', products.create);
+
+// Get all products
+router.get('/', products.findAll);
+
+// Get featured products
+router.get('/featured', products.getFeaturedProducts);
+
+// Get new products
+router.get('/new', products.getNewProducts);
+
+// Get products by brand
+router.get('/brand/:brand', products.getProductsByBrand);
+
+// Get a single product with id
+router.get('/:id', products.findOne);
+
+// Update a product with id
+router.put('/:id', products.update);
+
+// Delete a product with id
+router.delete('/:id', products.delete);
+
+// Upload product image
+router.post('/upload', upload.single('image'), products.uploadImage);
+
+module.exports = router;
