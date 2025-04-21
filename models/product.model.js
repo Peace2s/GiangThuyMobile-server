@@ -14,11 +14,11 @@ module.exports = (sequelize, Sequelize) => {
         allowNull: true
       },
       price: {
-        type: Sequelize.DECIMAL(12, 2),
+        type: Sequelize.DECIMAL(12, 0),
         allowNull: false
       },
       discount_price: {
-        type: Sequelize.DECIMAL(12, 2),
+        type: Sequelize.DECIMAL(12, 0),
         allowNull: true
       },
       stock_quantity: {
@@ -30,11 +30,6 @@ module.exports = (sequelize, Sequelize) => {
         type: Sequelize.ENUM('in_stock', 'out_of_stock', 'discontinued'),
         allowNull: false,
         defaultValue: 'in_stock'
-      },
-      category: {
-        type: Sequelize.ENUM('phone', 'accessory'),
-        allowNull: false,
-        defaultValue: 'phone'
       },
       brand: {
         type: Sequelize.STRING(100)
@@ -64,13 +59,15 @@ module.exports = (sequelize, Sequelize) => {
       },
       battery: {
         type: Sequelize.STRING(100),
-        allowNull: true,
-        comment: 'Thông tin pin (dung lượng, công nghệ)'
+        allowNull: true
       },
       image: {
         type: Sequelize.STRING,
         allowNull: true
       }
+    }, {
+      timestamps: true,
+      tableName: 'products'
     });
   
     return Product;
