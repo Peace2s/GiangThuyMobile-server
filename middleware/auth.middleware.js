@@ -13,7 +13,7 @@ const authMiddleware = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
 
     // Xác thực token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Tìm người dùng
     const user = await User.findByPk(decoded.id);

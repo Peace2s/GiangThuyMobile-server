@@ -21,10 +21,11 @@ const Cart = sequelize.define('Cart', {
     defaultValue: 'active'
   },
   totalAmount: {
-    type: DataTypes.DECIMAL(10, 0),
+    type: DataTypes.DECIMAL(20, 0),
     defaultValue: 0
   }
 }, {
+  tableName: 'Carts',
   timestamps: true
 });
 

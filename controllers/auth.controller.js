@@ -64,8 +64,30 @@ exports.login = async (req, res) => {
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: '24h' }
+      { expiresIn: '1d' }
     );
+
+    // Thiết lập cookie cho token
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000 
+    });
+
+    // Thiết lập cookie cho thông tin người dùng
+    res.cookie('user', JSON.stringify({
+      id: user.id,
+      fullName: user.fullName,
+      email: user.email,
+      phone: user.phone,
+      role: user.role
+    }), {
+      httpOnly: false, // Cho phép client đọc thông tin user
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 5 * 60 * 1000 // 5 phút
+    });
 
     res.json({
       message: 'Đăng nhập thành công',
