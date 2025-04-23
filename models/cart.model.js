@@ -1,6 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const User = require('./user.model');
 
 const Cart = sequelize.define('Cart', {
   id: {
@@ -10,11 +9,7 @@ const Cart = sequelize.define('Cart', {
   },
   userId: {
     type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: User,
-      key: 'id'
-    }
+    allowNull: false
   },
   status: {
     type: DataTypes.ENUM('active', 'checkout', 'abandoned'),

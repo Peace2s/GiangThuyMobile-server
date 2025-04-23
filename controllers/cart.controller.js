@@ -7,24 +7,17 @@ const { Op } = require('sequelize');
 // Thêm sản phẩm vào giỏ hàng
 exports.addToCart = async (req, res) => {
   try {
-    const { productId, quantity, selectedColor } = req.body;
+    const { productId, quantity } = req.body;
     const userId = req.user?.id;
 
-    // Kiểm tra sản phẩm
+    // Tìm sản phẩm
     const product = await Product.findByPk(productId);
     if (!product) {
-      return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
-    }
-
-    // Kiểm tra số lượng tồn kho
-    if (quantity > product.stock_quantity) {
-      return res.status(400).json({
-        message: `Sản phẩm chỉ còn ${product.stock_quantity} trong kho`
-      });
+      return res.status(404).json({ message: 'Sản phẩm không tồn tại' });
     }
 
     if (userId) {
-      // Xử lý cho user đã đăng nhập
+      // Nếu đã đăng nhập, lưu vào database
       let cart = await Cart.findOne({
         where: { userId, status: 'active' }
       });
@@ -41,8 +34,7 @@ exports.addToCart = async (req, res) => {
       let cartItem = await CartItem.findOne({
         where: {
           cartId: cart.id,
-          productId,
-          selectedColor
+          productId
         }
       });
 
@@ -65,7 +57,6 @@ exports.addToCart = async (req, res) => {
           productId,
           quantity,
           price: product.price,
-          selectedColor,
           totalPrice: product.price * quantity
         });
       }
@@ -74,7 +65,9 @@ exports.addToCart = async (req, res) => {
       const cartItems = await CartItem.findAll({
         where: { cartId: cart.id }
       });
-      const totalAmount = cartItems.reduce((sum, item) => sum + item.totalPrice, 0);
+      const totalAmount = cartItems.reduce((sum, item) => {
+        return sum + Number(item.totalPrice);
+      }, 0);
       await cart.update({ totalAmount });
 
       return res.json({
@@ -96,7 +89,6 @@ exports.addToCart = async (req, res) => {
         price: product.price,
         stock_quantity: product.stock_quantity,
         quantity,
-        selectedColor,
         totalPrice: product.price * quantity
       }
     });
@@ -111,9 +103,8 @@ exports.getCart = async (req, res) => {
   try {
     const userId = req.user?.id;
 
-    // Nếu user đã đăng nhập
     if (userId) {
-      const cart = await Cart.findOne({
+      let cart = await Cart.findOne({
         where: { userId, status: 'active' },
         include: [{
           model: CartItem,
@@ -125,25 +116,17 @@ exports.getCart = async (req, res) => {
       });
 
       if (!cart) {
-        // Tạo giỏ hàng mới nếu chưa có
-        const newCart = await Cart.create({
+        cart = await Cart.create({
           userId,
           status: 'active',
           totalAmount: 0
-        });
-        return res.json({
-          id: newCart.id,
-          userId,
-          status: 'active',
-          totalAmount: 0,
-          CartItems: []
         });
       }
 
       return res.json(cart);
     }
 
-    // Nếu là khách vãng lai, trả về template cho giỏ hàng local
+    // Nếu chưa đăng nhập, trả về giỏ hàng rỗng
     return res.json({
       status: 'active',
       totalAmount: 0,
@@ -160,7 +143,7 @@ exports.updateCartItem = async (req, res) => {
   try {
     const { cartItemId } = req.params;
     const { quantity } = req.body;
-    const userId = req.user.id; // Lấy từ middleware xác thực
+    const userId = req.user.id;
 
     // Tìm cart item và kiểm tra quyền sở hữu
     const cartItem = await CartItem.findOne({
@@ -168,8 +151,6 @@ exports.updateCartItem = async (req, res) => {
       include: [{
         model: Cart,
         where: { userId, status: 'active' }
-      }, {
-        model: Product
       }]
     });
 
@@ -177,8 +158,14 @@ exports.updateCartItem = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy sản phẩm trong giỏ hàng' });
     }
 
+    // Tìm thông tin sản phẩm
+    const product = await Product.findByPk(cartItem.productId);
+    if (!product) {
+      return res.status(404).json({ message: 'Sản phẩm không tồn tại' });
+    }
+
     // Kiểm tra số lượng tồn kho
-    if (quantity > cartItem.Product.stock_quantity) {
+    if (quantity > product.stock_quantity) {
       return res.status(400).json({ message: 'Số lượng sản phẩm trong kho không đủ' });
     }
 
@@ -193,7 +180,9 @@ exports.updateCartItem = async (req, res) => {
       where: { cartId: cart.id }
     });
     
-    const totalAmount = cartItems.reduce((sum, item) => sum + parseFloat(item.totalPrice), 0);
+    const totalAmount = cartItems.reduce((sum, item) => {
+      return sum + Number(item.totalPrice);
+    }, 0);
     await cart.update({ totalAmount });
 
     res.status(200).json({ message: 'Cập nhật giỏ hàng thành công' });
@@ -231,7 +220,9 @@ exports.removeFromCart = async (req, res) => {
       where: { cartId }
     });
     
-    const totalAmount = cartItems.reduce((sum, item) => sum + parseFloat(item.totalPrice), 0);
+    const totalAmount = cartItems.reduce((sum, item) => {
+      return sum + Number(item.totalPrice);
+    }, 0);
     await cart.update({ totalAmount });
 
     res.status(200).json({ message: 'Xóa sản phẩm khỏi giỏ hàng thành công' });
@@ -293,8 +284,7 @@ exports.mergeCart = async (req, res) => {
       let cartItem = await CartItem.findOne({
         where: {
           cartId: cart.id,
-          productId: item.productId,
-          selectedColor: item.selectedColor
+          productId: item.productId
         }
       });
 
@@ -316,7 +306,6 @@ exports.mergeCart = async (req, res) => {
           productId: item.productId,
           quantity,
           price: product.price,
-          selectedColor: item.selectedColor,
           totalPrice: product.price * quantity
         });
       }
@@ -330,7 +319,9 @@ exports.mergeCart = async (req, res) => {
         attributes: ['id', 'name', 'image', 'stock_quantity']
       }]
     });
-    const totalAmount = cartItems.reduce((sum, item) => sum + item.totalPrice, 0);
+    const totalAmount = cartItems.reduce((sum, item) => {
+      return sum + Number(item.totalPrice);
+    }, 0);
     await cart.update({ totalAmount });
 
     res.json({

@@ -37,10 +37,6 @@ const CartItem = sequelize.define('CartItem', {
     type: DataTypes.DECIMAL(10, 0),
     allowNull: false
   },
-  selectedColor: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
   totalPrice: {
     type: DataTypes.DECIMAL(10, 0),
     allowNull: false
