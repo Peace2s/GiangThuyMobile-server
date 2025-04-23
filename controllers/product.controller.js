@@ -9,12 +9,11 @@ exports.create = async (req, res) => {
       name: req.body.name,
       description: req.body.description,
       price: req.body.price,
-      promotional_price: req.body.promotional_price,
+      discount_price: req.body.discount_price,
       stock_quantity: req.body.stock_quantity,
-      status: req.body.status || 'in_stock',
-      category: req.body.category,
+      status: req.body.stock_quantity > 0 ? 'in_stock' : 'out_of_stock',
       brand: req.body.brand,
-      memory: req.body.memory,
+      storage: req.body.storage,
       screen: req.body.screen,
       processor: req.body.processor,
       ram: req.body.ram,
@@ -106,23 +105,28 @@ exports.update = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    await product.update({
+    const updateData = {
       name: req.body.name,
       description: req.body.description,
       price: req.body.price,
       discount_price: req.body.discount_price,
       stock_quantity: req.body.stock_quantity,
-      status: req.body.status,
-      category: req.body.category,
       brand: req.body.brand,
       storage: req.body.storage,
       screen: req.body.screen,
       processor: req.body.processor,
       ram: req.body.ram,
       camera: req.body.camera,
-      battery: req.body.battery
-    });
+      battery: req.body.battery,
+      image: req.body.image
+    };
 
+    // Chỉ cập nhật trạng thái nếu sản phẩm bị ngừng kinh doanh
+    if (req.body.status === 'discontinued') {
+      updateData.status = 'discontinued';
+    }
+
+    await product.update(updateData);
     res.json(product);
   } catch (error) {
     res.status(500).json({ message: error.message });

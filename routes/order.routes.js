@@ -2,20 +2,20 @@ const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/order.controller');
 const authMiddleware = require('../middleware/auth.middleware');
+const adminMiddleware = require('../middleware/admin.middleware');
 
 // Áp dụng middleware xác thực cho tất cả các route
 router.use(authMiddleware);
 
-// Tạo đơn hàng mới
+// Routes cho người dùng
 router.post('/', orderController.createOrder);
-
-// Lấy danh sách đơn hàng của người dùng
 router.get('/', orderController.getUserOrders);
-
-// Lấy chi tiết đơn hàng
 router.get('/:orderId', orderController.getOrderDetails);
-
-// Hủy đơn hàng
 router.put('/:orderId/cancel', orderController.cancelOrder);
+
+// Routes cho admin
+router.get('/admin/all', adminMiddleware, orderController.getAllOrders);
+router.put('/admin/:orderId/status', adminMiddleware, orderController.updateOrderStatus);
+router.get('/admin/statistics', adminMiddleware, orderController.getOrderStatistics);
 
 module.exports = router; 

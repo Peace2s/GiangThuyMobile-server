@@ -4,7 +4,9 @@ const OrderItem = db.orderItems;
 const Cart = db.carts;
 const CartItem = db.cartItems;
 const Product = db.products;
+const User = db.users;
 const { Op } = require('sequelize');
+const sequelize = require('sequelize');
 
 // Tạo đơn hàng mới
 exports.createOrder = async (req, res) => {
@@ -193,6 +195,124 @@ exports.cancelOrder = async (req, res) => {
     res.status(200).json({ message: 'Hủy đơn hàng thành công' });
   } catch (error) {
     console.error('Error cancelling order:', error);
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+};
+
+// Lấy tất cả đơn hàng (cho admin)
+exports.getAllOrders = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status, search } = req.query;
+    const offset = (page - 1) * limit;
+
+    const whereCondition = {};
+    if (status) {
+      whereCondition.status = status;
+    }
+    if (search) {
+      whereCondition[Op.or] = [
+        { id: { [Op.like]: `%${search}%` } },
+        { shippingAddress: { [Op.like]: `%${search}%` } }
+      ];
+    }
+
+    // Log để debug
+    console.log('Query parameters:', { page, limit, status, search });
+    console.log('Where condition:', whereCondition);
+
+    const { count, rows: orders } = await Order.findAndCountAll({
+      where: whereCondition,
+      include: [
+        {
+          model: User,
+          attributes: ['id', 'full_name', 'email', 'phone']
+        },
+        {
+          model: OrderItem,
+          include: [{
+            model: Product,
+            attributes: ['id', 'name', 'image']
+          }]
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    // Log kết quả
+    console.log('Found orders:', orders.length);
+
+    res.status(200).json({
+      total: count,
+      orders: orders.map(order => ({
+        ...order.toJSON(),
+        user: order.user ? {
+          ...order.user.toJSON(),
+          name: order.user.full_name // Map full_name to name for frontend
+        } : null,
+        OrderItems: order.OrderItems || []
+      })),
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(count / limit)
+    });
+  } catch (error) {
+    console.error('Error in getAllOrders:', error);
+    res.status(500).json({ 
+      message: 'Lỗi server', 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
+
+// Cập nhật trạng thái đơn hàng (cho admin)
+exports.updateOrderStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { status } = req.body;
+
+    const order = await Order.findByPk(orderId);
+    if (!order) {
+      return res.status(404).json({ message: 'Không tìm thấy đơn hàng' });
+    }
+
+    await order.update({ status });
+    res.status(200).json({ message: 'Cập nhật trạng thái đơn hàng thành công' });
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+};
+
+// Lấy thống kê đơn hàng (cho admin)
+exports.getOrderStatistics = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    const whereCondition = {};
+    if (startDate && endDate) {
+      whereCondition.createdAt = {
+        [Op.between]: [new Date(startDate), new Date(endDate)]
+      };
+    }
+
+    const orders = await Order.findAll({
+      where: whereCondition,
+      attributes: ['status', [sequelize.fn('COUNT', sequelize.col('id')), 'count']],
+      group: ['status']
+    });
+
+    const totalOrders = await Order.count({ where: whereCondition });
+    const totalRevenue = await Order.sum('totalAmount', { where: whereCondition });
+
+    res.status(200).json({
+      orders,
+      totalOrders,
+      totalRevenue
+    });
+  } catch (error) {
+    console.error('Error getting order statistics:', error);
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 }; 

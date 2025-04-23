@@ -64,12 +64,23 @@ const Product = sequelize.define('product', {
     allowNull: true
   },
   image: {
-    type: DataTypes.STRING,
-    allowNull: true
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'URL hình ảnh sản phẩm từ Cloudinary'
   }
 }, {
   timestamps: true,
-  tableName: 'products'
+  tableName: 'products',
+  hooks: {
+    beforeSave: async (product) => {
+      // Tự động cập nhật trạng thái dựa trên số lượng tồn kho
+      if (product.stock_quantity <= 0) {
+        product.status = 'out_of_stock';
+      } else if (product.status === 'out_of_stock') {
+        product.status = 'in_stock';
+      }
+    }
+  }
 });
 
 module.exports = Product;
