@@ -16,11 +16,8 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// Create a new product
-router.post('/', products.create);
-
-// Get all products
-router.get('/', products.findAll);
+// Search products (đặt trước các route có param)
+router.get("/search", products.searchProducts);
 
 // Get featured products
 router.get('/featured', products.getFeaturedProducts);
@@ -30,6 +27,12 @@ router.get('/new', products.getNewProducts);
 
 // Get products by brand
 router.get('/brand/:brand', products.getProductsByBrand);
+
+// Create a new product
+router.post('/', products.create);
+
+// Get all products
+router.get('/', products.findAll);
 
 // Get a single product with id
 router.get('/:id', products.findOne);

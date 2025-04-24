@@ -313,3 +313,59 @@ exports.uploadImage = async (req, res) => {
     });
   }
 };
+
+// Search products
+exports.searchProducts = async (req, res) => {
+  try {
+    const { q, minPrice, maxPrice, brand } = req.query;
+    let condition = {};
+
+    // Tìm kiếm theo tên hoặc mô tả sản phẩm
+    if (q) {
+      condition[Op.or] = [
+        {
+          name: {
+            [Op.like]: `%${q}%`
+          }
+        },
+        {
+          description: {
+            [Op.like]: `%${q}%`
+          }
+        }
+      ];
+    }
+
+    // Lọc theo thương hiệu
+    if (brand) {
+      condition.brand = brand;
+    }
+
+    const products = await Product.findAll({
+      where: condition,
+      include: [{
+        model: ProductVariant,
+        required: false,
+        where: minPrice || maxPrice ? {
+          price: {
+            ...(minPrice ? { [Op.gte]: parseFloat(minPrice) } : {}),
+            ...(maxPrice ? { [Op.lte]: parseFloat(maxPrice) } : {})
+          }
+        } : undefined
+      }],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      data: products,
+      total: products.length
+    });
+  } catch (error) {
+    console.error('Search error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Có lỗi xảy ra khi tìm kiếm sản phẩm."
+    });
+  }
+};
