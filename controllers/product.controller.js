@@ -51,10 +51,10 @@ exports.findAll = async (req, res) => {
         model: ProductVariant,
         where: {
           status: 'in_stock',
-          ...(minPrice || maxPrice ? {
+          ...(minPrice !== undefined || maxPrice !== undefined ? {
             price: {
-              ...(minPrice ? { [Op.gte]: parseFloat(minPrice) } : {}),
-              ...(maxPrice ? { [Op.lte]: parseFloat(maxPrice) } : {})
+              ...(minPrice && minPrice !== 'null' ? { [Op.gte]: parseFloat(minPrice) } : {}),
+              ...(maxPrice && maxPrice !== 'null' ? { [Op.lte]: parseFloat(maxPrice) } : {})
             }
           } : {})
         }
