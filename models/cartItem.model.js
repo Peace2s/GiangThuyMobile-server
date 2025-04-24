@@ -2,6 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const Cart = require('./cart.model');
 const Product = require('./product.model');
+const ProductVariant = require('./productVariant.model');
 
 const CartItem = sequelize.define('CartItem', {
   id: {
@@ -22,6 +23,14 @@ const CartItem = sequelize.define('CartItem', {
     allowNull: false,
     references: {
       model: Product,
+      key: 'id'
+    }
+  },
+  variantId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: ProductVariant,
       key: 'id'
     }
   },

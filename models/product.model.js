@@ -15,29 +15,8 @@ const Product = sequelize.define('product', {
     type: DataTypes.TEXT,
     allowNull: true
   },
-  price: {
-    type: DataTypes.DECIMAL(12, 0),
-    allowNull: false
-  },
-  discount_price: {
-    type: DataTypes.DECIMAL(12, 0),
-    allowNull: true
-  },
-  stock_quantity: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    defaultValue: 0
-  },
-  status: {
-    type: DataTypes.ENUM('in_stock', 'out_of_stock', 'discontinued'),
-    allowNull: false,
-    defaultValue: 'in_stock'
-  },
   brand: {
     type: DataTypes.STRING(100)
-  },
-  storage: {
-    type: DataTypes.STRING(50)
   },
   screen: {
     type: DataTypes.STRING(255),
@@ -49,11 +28,6 @@ const Product = sequelize.define('product', {
     allowNull: true,
     comment: 'Thông tin vi xử lý (chip, tốc độ)'
   },
-  ram: {
-    type: DataTypes.STRING(50),
-    allowNull: true,
-    comment: 'Dung lượng RAM'
-  },
   camera: {
     type: DataTypes.TEXT,
     allowNull: true,
@@ -63,6 +37,11 @@ const Product = sequelize.define('product', {
     type: DataTypes.STRING(100),
     allowNull: true
   },
+  ram: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: 'Dung lượng RAM'
+  },
   image: {
     type: DataTypes.TEXT,
     allowNull: true,
@@ -70,17 +49,7 @@ const Product = sequelize.define('product', {
   }
 }, {
   timestamps: true,
-  tableName: 'products',
-  hooks: {
-    beforeSave: async (product) => {
-      // Tự động cập nhật trạng thái dựa trên số lượng tồn kho
-      if (product.stock_quantity <= 0) {
-        product.status = 'out_of_stock';
-      } else if (product.status === 'out_of_stock') {
-        product.status = 'in_stock';
-      }
-    }
-  }
+  tableName: 'products'
 });
 
 module.exports = Product;

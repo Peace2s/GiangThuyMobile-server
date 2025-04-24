@@ -23,7 +23,7 @@ const adminMiddleware = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Admin middleware error:', error);
-    res.status(401).json({ message: 'Token không hợp lệ' });
+    return res.status(500).json({ message: 'Lỗi server' });
   }
 };
 

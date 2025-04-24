@@ -23,12 +23,16 @@ const authRoutes = require('./routes/auth.routes');
 const cartRoutes = require('./routes/cart.routes');
 const orderRoutes = require('./routes/order.routes');
 const statisticsRoutes = require('./routes/statistics.routes');
+const productVariantRoutes = require('./routes/productVariant.routes');
+const userRoutes = require('./routes/user.routes');
 
 app.use('/api/products', productRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/statistics', statisticsRoutes);
+app.use('/api/variants', productVariantRoutes);
+app.use('/api/users', userRoutes);
 
 // Sync database
 db.sequelize.sync()

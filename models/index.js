@@ -13,30 +13,34 @@ db.carts = require('./cart.model.js');
 db.cartItems = require('./cartItem.model.js');
 db.orders = require('./order.model.js');
 db.orderItems = require('./orderItem.model.js');
+db.productVariants = require('./productVariant.model.js');
 
 // Define relationships
-// User - Cart (One-to-Many)
 db.users.hasMany(db.carts, { foreignKey: 'userId' });
 db.carts.belongsTo(db.users, { foreignKey: 'userId' });
 
-// Cart - CartItem (One-to-Many)
 db.carts.hasMany(db.cartItems, { foreignKey: 'cartId' });
 db.cartItems.belongsTo(db.carts, { foreignKey: 'cartId' });
 
-// Product - CartItem (One-to-Many)
 db.products.hasMany(db.cartItems, { foreignKey: 'productId' });
 db.cartItems.belongsTo(db.products, { foreignKey: 'productId' });
 
-// User - Order (One-to-Many)
+db.products.hasMany(db.productVariants, { foreignKey: 'productId' });
+db.productVariants.belongsTo(db.products, { foreignKey: 'productId' });
+
+db.productVariants.hasMany(db.cartItems, { foreignKey: 'variantId' });
+db.cartItems.belongsTo(db.productVariants, { foreignKey: 'variantId' });
+
 db.users.hasMany(db.orders, { foreignKey: 'userId' });
 db.orders.belongsTo(db.users, { foreignKey: 'userId' });
 
-// Order - OrderItem (One-to-Many)
 db.orders.hasMany(db.orderItems, { foreignKey: 'orderId' });
 db.orderItems.belongsTo(db.orders, { foreignKey: 'orderId' });
 
-// Product - OrderItem (One-to-Many)
 db.products.hasMany(db.orderItems, { foreignKey: 'productId' });
 db.orderItems.belongsTo(db.products, { foreignKey: 'productId' });
+
+db.productVariants.hasMany(db.orderItems, { foreignKey: 'variantId' });
+db.orderItems.belongsTo(db.productVariants, { foreignKey: 'variantId' });
 
 module.exports = db;

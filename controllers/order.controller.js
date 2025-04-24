@@ -7,6 +7,7 @@ const Product = db.products;
 const User = db.users;
 const { Op } = require('sequelize');
 const sequelize = require('sequelize');
+const ProductVariant = db.productVariants;
 
 // Tạo đơn hàng mới
 exports.createOrder = async (req, res) => {
@@ -62,13 +63,13 @@ exports.createOrder = async (req, res) => {
     });
 
     // Tạo chi tiết đơn hàng và cập nhật số lượng tồn kho
-    for (const item of cart.CartItems) {
+    for (const item of req.body.items) {
       await OrderItem.create({
         orderId: order.id,
         productId: item.productId,
+        variantId: item.variantId,
         quantity: item.quantity,
         price: item.price,
-        selectedColor: item.selectedColor,
         totalPrice: item.price * item.quantity
       });
 
@@ -118,10 +119,16 @@ exports.getUserOrders = async (req, res) => {
       where: { userId },
       include: [{
         model: OrderItem,
-        include: [{
-          model: Product,
-          attributes: ['id', 'name', 'image']
-        }]
+        include: [
+          {
+            model: Product,
+            attributes: ['id', 'name', 'image']
+          },
+          {
+            model: ProductVariant,
+            attributes: ['id', 'color', 'storage']
+          }
+        ]
       }],
       order: [['createdAt', 'DESC']]
     });
@@ -171,9 +178,16 @@ exports.cancelOrder = async (req, res) => {
       where: { id: orderId, userId, status: 'pending' },
       include: [{
         model: OrderItem,
-        include: [{
-          model: Product
-        }]
+        include: [
+          {
+            model: Product,
+            attributes: ['id', 'name', 'stock_quantity']
+          },
+          {
+            model: ProductVariant,
+            attributes: ['id', 'stock_quantity']
+          }
+        ]
       }]
     });
 
@@ -183,10 +197,12 @@ exports.cancelOrder = async (req, res) => {
 
     // Hoàn lại số lượng tồn kho
     for (const item of order.OrderItems) {
-      await Product.update(
-        { stock_quantity: item.Product.stock_quantity + item.quantity },
-        { where: { id: item.productId } }
-      );
+      if (item.ProductVariant) {
+        await ProductVariant.update(
+          { stock_quantity: item.ProductVariant.stock_quantity + item.quantity },
+          { where: { id: item.variantId } }
+        );
+      }
     }
 
     // Cập nhật trạng thái đơn hàng
@@ -229,10 +245,16 @@ exports.getAllOrders = async (req, res) => {
         },
         {
           model: OrderItem,
-          include: [{
-            model: Product,
-            attributes: ['id', 'name', 'image']
-          }]
+          include: [
+            {
+              model: Product,
+              attributes: ['id', 'name', 'image']
+            },
+            {
+              model: ProductVariant,
+              attributes: ['id', 'color', 'storage']
+            }
+          ]
         }
       ],
       order: [['createdAt', 'DESC']],

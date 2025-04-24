@@ -2,18 +2,26 @@ const db = require('../models');
 const Cart = db.carts;
 const CartItem = db.cartItems;
 const Product = db.products;
+const ProductVariant = db.productVariants;
 const { Op } = require('sequelize');
 
 // Thêm sản phẩm vào giỏ hàng
 exports.addToCart = async (req, res) => {
   try {
-    const { productId, quantity } = req.body;
+    const { productId, variantId, quantity } = req.body;
     const userId = req.user?.id;
 
-    // Tìm sản phẩm
-    const product = await Product.findByPk(productId);
-    if (!product) {
-      return res.status(404).json({ message: 'Sản phẩm không tồn tại' });
+    // Tìm biến thể sản phẩm
+    const variant = await ProductVariant.findOne({
+      where: { id: variantId, productId },
+      include: [{
+        model: Product,
+        attributes: ['id', 'name', 'image']
+      }]
+    });
+
+    if (!variant) {
+      return res.status(404).json({ message: 'Biến thể sản phẩm không tồn tại' });
     }
 
     if (userId) {
@@ -34,30 +42,32 @@ exports.addToCart = async (req, res) => {
       let cartItem = await CartItem.findOne({
         where: {
           cartId: cart.id,
-          productId
+          productId,
+          variantId
         }
       });
 
       if (cartItem) {
         // Cập nhật số lượng nếu đã có
         const newQuantity = cartItem.quantity + quantity;
-        if (newQuantity > product.stock_quantity) {
+        if (newQuantity > variant.stock_quantity) {
           return res.status(400).json({
             message: `Không thể thêm ${quantity} sản phẩm vào giỏ hàng. Số lượng tồn kho không đủ.`
           });
         }
         await cartItem.update({
           quantity: newQuantity,
-          totalPrice: product.price * newQuantity
+          totalPrice: variant.price * newQuantity
         });
       } else {
         // Thêm sản phẩm mới vào giỏ
         cartItem = await CartItem.create({
           cartId: cart.id,
           productId,
+          variantId,
           quantity,
-          price: product.price,
-          totalPrice: product.price * quantity
+          price: variant.price,
+          totalPrice: variant.price * quantity
         });
       }
 
@@ -83,13 +93,17 @@ exports.addToCart = async (req, res) => {
     return res.json({
       message: 'Thêm vào giỏ hàng thành công',
       product: {
-        id: product.id,
-        name: product.name,
-        image: product.image,
-        price: product.price,
-        stock_quantity: product.stock_quantity,
+        id: variant.product.id,
+        name: variant.product.name,
+        image: variant.product.image,
+        variantId: variant.id,
+        color: variant.color,
+        storage: variant.storage,
+        ram: variant.product.ram,
+        price: variant.price,
+        stock_quantity: variant.stock_quantity,
         quantity,
-        totalPrice: product.price * quantity
+        totalPrice: variant.price * quantity
       }
     });
   } catch (error) {
@@ -110,7 +124,10 @@ exports.getCart = async (req, res) => {
           model: CartItem,
           include: [{
             model: Product,
-            attributes: ['id', 'name', 'image', 'stock_quantity', 'price']
+            attributes: ['id', 'name', 'image', 'ram']
+          }, {
+            model: ProductVariant,
+            attributes: ['id', 'color', 'storage', 'price', 'stock_quantity']
           }]
         }]
       });
@@ -151,6 +168,8 @@ exports.updateCartItem = async (req, res) => {
       include: [{
         model: Cart,
         where: { userId, status: 'active' }
+      }, {
+        model: ProductVariant
       }]
     });
 
@@ -158,14 +177,8 @@ exports.updateCartItem = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy sản phẩm trong giỏ hàng' });
     }
 
-    // Tìm thông tin sản phẩm
-    const product = await Product.findByPk(cartItem.productId);
-    if (!product) {
-      return res.status(404).json({ message: 'Sản phẩm không tồn tại' });
-    }
-
     // Kiểm tra số lượng tồn kho
-    if (quantity > product.stock_quantity) {
+    if (quantity > cartItem.ProductVariant.stock_quantity) {
       return res.status(400).json({ message: 'Số lượng sản phẩm trong kho không đủ' });
     }
 
@@ -196,7 +209,7 @@ exports.updateCartItem = async (req, res) => {
 exports.removeFromCart = async (req, res) => {
   try {
     const { cartItemId } = req.params;
-    const userId = req.user.id; // Lấy từ middleware xác thực
+    const userId = req.user.id;
 
     // Tìm cart item và kiểm tra quyền sở hữu
     const cartItem = await CartItem.findOne({
@@ -235,7 +248,7 @@ exports.removeFromCart = async (req, res) => {
 // Xóa toàn bộ giỏ hàng
 exports.clearCart = async (req, res) => {
   try {
-    const userId = req.user.id; // Lấy từ middleware xác thực
+    const userId = req.user.id;
 
     const cart = await Cart.findOne({
       where: { userId, status: 'active' }
@@ -278,13 +291,17 @@ exports.mergeCart = async (req, res) => {
 
     // Merge từng sản phẩm từ localStorage
     for (const item of items) {
-      const product = await Product.findByPk(item.productId);
-      if (!product) continue;
+      const variant = await ProductVariant.findOne({
+        where: { id: item.variantId, productId: item.productId }
+      });
+
+      if (!variant) continue;
 
       let cartItem = await CartItem.findOne({
         where: {
           cartId: cart.id,
-          productId: item.productId
+          productId: item.productId,
+          variantId: item.variantId
         }
       });
 
@@ -292,21 +309,22 @@ exports.mergeCart = async (req, res) => {
         // Cập nhật số lượng nếu đã có
         const newQuantity = Math.min(
           cartItem.quantity + item.quantity,
-          product.stock_quantity
+          variant.stock_quantity
         );
         await cartItem.update({
           quantity: newQuantity,
-          totalPrice: product.price * newQuantity
+          totalPrice: variant.price * newQuantity
         });
       } else {
         // Thêm sản phẩm mới
-        const quantity = Math.min(item.quantity, product.stock_quantity);
+        const quantity = Math.min(item.quantity, variant.stock_quantity);
         await CartItem.create({
           cartId: cart.id,
           productId: item.productId,
+          variantId: item.variantId,
           quantity,
-          price: product.price,
-          totalPrice: product.price * quantity
+          price: variant.price,
+          totalPrice: variant.price * quantity
         });
       }
     }
@@ -316,7 +334,10 @@ exports.mergeCart = async (req, res) => {
       where: { cartId: cart.id },
       include: [{
         model: Product,
-        attributes: ['id', 'name', 'image', 'stock_quantity']
+        attributes: ['id', 'name', 'image']
+      }, {
+        model: ProductVariant,
+        attributes: ['id', 'color', 'storage', 'ram', 'price', 'stock_quantity']
       }]
     });
     const totalAmount = cartItems.reduce((sum, item) => {

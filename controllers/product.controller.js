@@ -1,5 +1,6 @@
 const db = require("../models");
 const Product = db.products;
+const ProductVariant = db.productVariants;
 const { Op } = require("sequelize");
 const cloudinary = require('../config/cloudinary.config');
 
@@ -26,7 +27,7 @@ exports.create = async (req, res) => {
     res.send(data);
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Some error occurred while creating the Product."
+      message: err.message || "Có lỗi xảy ra khi tạo sản phẩm."
     });
   }
 };
@@ -44,14 +45,20 @@ exports.findAll = async (req, res) => {
       condition.brand = brand;
     }
 
-    if (minPrice || maxPrice) {
-      condition.price = {};
-      if (minPrice) condition.price[Op.gte] = parseFloat(minPrice);
-      if (maxPrice) condition.price[Op.lte] = parseFloat(maxPrice);
-    }
-
     const products = await Product.findAll({
       where: condition,
+      include: [{
+        model: ProductVariant,
+        where: {
+          status: 'in_stock',
+          ...(minPrice || maxPrice ? {
+            price: {
+              ...(minPrice ? { [Op.gte]: parseFloat(minPrice) } : {}),
+              ...(maxPrice ? { [Op.lte]: parseFloat(maxPrice) } : {})
+            }
+          } : {})
+        }
+      }],
       order: [['createdAt', 'DESC']]
     });
 
@@ -83,7 +90,15 @@ exports.findOne = async (req, res) => {
   const id = req.params.id;
   
   try {
-    const product = await Product.findByPk(id);
+    const product = await Product.findByPk(id, {
+      include: [{
+        model: ProductVariant,
+        where: {
+          status: 'in_stock'
+        }
+      }]
+    });
+    
     if (product) {
       res.send(product);
     } else {
@@ -102,7 +117,7 @@ exports.update = async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.id);
     if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
     }
 
     const updateData = {
@@ -170,10 +185,19 @@ exports.getAllProducts = async (req, res) => {
 // Get product by ID
 exports.getProductById = async (req, res) => {
   try {
-    const product = await Product.findByPk(req.params.id);
+    const product = await Product.findByPk(req.params.id, {
+      include: [{
+        model: ProductVariant,
+        where: {
+          status: 'in_stock'
+        }
+      }]
+    });
+
     if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
     }
+
     res.json(product);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -184,23 +208,25 @@ exports.getProductById = async (req, res) => {
 exports.getFeaturedProducts = async (req, res) => {
   try {
     const products = await Product.findAll({
-      where: {
-        status: 'in_stock',
-        discount_price: {
-          [Op.ne]: null
-        }
-      },
-      order: [
-        ['discount_price', 'ASC'],
-        ['createdAt', 'DESC']
-      ],
+      include: [{
+        model: ProductVariant,
+        where: {
+          status: 'in_stock',
+          discount_price: {
+            [Op.ne]: null
+          }
+        },
+        order: [
+          ['discount_price', 'ASC']
+        ]
+      }],
       limit: 3
     });
 
     res.status(200).json(products);
   } catch (error) {
     res.status(500).json({
-      message: error.message || "Some error occurred while retrieving featured products."
+      message: error.message || "Có lỗi xảy ra khi lấy sản phẩm nổi bật."
     });
   }
 };
@@ -209,9 +235,12 @@ exports.getFeaturedProducts = async (req, res) => {
 exports.getNewProducts = async (req, res) => {
   try {
     const products = await Product.findAll({
-      where: {
-        status: 'in_stock'
-      },
+      include: [{
+        model: ProductVariant,
+        where: {
+          status: 'in_stock'
+        }
+      }],
       order: [
         ['createdAt', 'DESC']
       ],
@@ -221,7 +250,7 @@ exports.getNewProducts = async (req, res) => {
     res.status(200).json(products);
   } catch (error) {
     res.status(500).json({
-      message: error.message || "Some error occurred while retrieving new products."
+      message: error.message || "Có lỗi xảy ra khi lấy sản phẩm mới."
     });
   }
 };
@@ -229,12 +258,33 @@ exports.getNewProducts = async (req, res) => {
 // Get products by brand
 exports.getProductsByBrand = async (req, res) => {
   try {
-    const products = await Product.findAll({
+    const { minPrice, maxPrice } = req.query;
+    const brand = req.params.brand;
+
+    const whereCondition = {
+      brand: brand
+    };
+
+    const includeCondition = [{
+      model: ProductVariant,
       where: {
-        brand: req.params.brand,
         status: 'in_stock'
       }
+    }];
+
+    // Thêm điều kiện lọc theo giá nếu có
+    if (minPrice || maxPrice) {
+      includeCondition[0].where.price = {
+        ...(minPrice ? { [Op.gte]: parseFloat(minPrice) } : {}),
+        ...(maxPrice ? { [Op.lte]: parseFloat(maxPrice) } : {})
+      };
+    }
+
+    const products = await Product.findAll({
+      where: whereCondition,
+      include: includeCondition
     });
+
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -245,7 +295,7 @@ exports.getProductsByBrand = async (req, res) => {
 exports.uploadImage = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).send({ message: 'No file uploaded' });
+      return res.status(400).send({ message: 'Không có file được tải lên' });
     }
 
     const result = await cloudinary.uploader.upload(req.file.path, {
@@ -254,12 +304,12 @@ exports.uploadImage = async (req, res) => {
     });
 
     res.status(200).send({
-      message: 'Image uploaded successfully',
+      message: 'Tải ảnh lên thành công',
       url: result.secure_url
     });
   } catch (err) {
     res.status(500).send({
-      message: err.message || 'Some error occurred while uploading the image.'
+      message: err.message || 'Có lỗi xảy ra khi tải ảnh lên.'
     });
   }
 };
