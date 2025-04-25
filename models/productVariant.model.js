@@ -52,7 +52,6 @@ const ProductVariant = sequelize.define('productVariant', {
   tableName: 'product_variants',
   hooks: {
     beforeSave: async (variant) => {
-      // Tự động cập nhật trạng thái dựa trên số lượng tồn kho
       if (variant.stock_quantity <= 0) {
         variant.status = 'out_of_stock';
       } else if (variant.status === 'out_of_stock') {

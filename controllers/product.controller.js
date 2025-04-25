@@ -52,10 +52,25 @@ exports.findAll = async (req, res) => {
         where: {
           status: 'in_stock',
           ...(minPrice !== undefined || maxPrice !== undefined ? {
-            price: {
-              ...(minPrice && minPrice !== 'null' ? { [Op.gte]: parseFloat(minPrice) } : {}),
-              ...(maxPrice && maxPrice !== 'null' ? { [Op.lte]: parseFloat(maxPrice) } : {})
-            }
+            [Op.or]: [
+              {
+                discount_price: {
+                  ...(minPrice && minPrice !== 'null' ? { [Op.gte]: parseFloat(minPrice) } : {}),
+                  ...(maxPrice && maxPrice !== 'null' ? { [Op.lte]: parseFloat(maxPrice) } : {})
+                }
+              },
+              {
+                [Op.and]: [
+                  { discount_price: null },
+                  {
+                    price: {
+                      ...(minPrice && minPrice !== 'null' ? { [Op.gte]: parseFloat(minPrice) } : {}),
+                      ...(maxPrice && maxPrice !== 'null' ? { [Op.lte]: parseFloat(maxPrice) } : {})
+                    }
+                  }
+                ]
+              }
+            ]
           } : {})
         }
       }],
@@ -136,11 +151,6 @@ exports.update = async (req, res) => {
       image: req.body.image
     };
 
-    // Chỉ cập nhật trạng thái nếu sản phẩm bị ngừng kinh doanh
-    if (req.body.status === 'discontinued') {
-      updateData.status = 'discontinued';
-    }
-
     await product.update(updateData);
     res.json(product);
   } catch (error) {
@@ -172,17 +182,22 @@ exports.delete = async (req, res) => {
   }
 };
 
-// Get all products
 exports.getAllProducts = async (req, res) => {
   try {
-    const products = await Product.findAll();
+    const products = await Product.findAll({
+      include: [{
+        model: ProductVariant,
+        where: {
+          status: 'in_stock'
+        }
+      }]
+    });
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Get product by ID
 exports.getProductById = async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.id, {
@@ -204,7 +219,6 @@ exports.getProductById = async (req, res) => {
   }
 };
 
-// Get featured products
 exports.getFeaturedProducts = async (req, res) => {
   try {
     const products = await Product.findAll({
@@ -231,7 +245,6 @@ exports.getFeaturedProducts = async (req, res) => {
   }
 };
 
-// Get new products
 exports.getNewProducts = async (req, res) => {
   try {
     const products = await Product.findAll({
@@ -255,7 +268,6 @@ exports.getNewProducts = async (req, res) => {
   }
 };
 
-// Get products by brand
 exports.getProductsByBrand = async (req, res) => {
   try {
     const { minPrice, maxPrice } = req.query;
@@ -268,17 +280,30 @@ exports.getProductsByBrand = async (req, res) => {
     const includeCondition = [{
       model: ProductVariant,
       where: {
-        status: 'in_stock'
+        status: 'in_stock',
+        ...(minPrice !== undefined || maxPrice !== undefined ? {
+          [Op.or]: [
+            {
+              discount_price: {
+                ...(minPrice && minPrice !== 'null' ? { [Op.gte]: parseFloat(minPrice) } : {}),
+                ...(maxPrice && maxPrice !== 'null' ? { [Op.lte]: parseFloat(maxPrice) } : {})
+              }
+            },
+            {
+              [Op.and]: [
+                { discount_price: null },
+                {
+                  price: {
+                    ...(minPrice && minPrice !== 'null' ? { [Op.gte]: parseFloat(minPrice) } : {}),
+                    ...(maxPrice && maxPrice !== 'null' ? { [Op.lte]: parseFloat(maxPrice) } : {})
+                  }
+                }
+              ]
+            }
+          ]
+        } : {})
       }
     }];
-
-    // Thêm điều kiện lọc theo giá nếu có
-    if (minPrice || maxPrice) {
-      includeCondition[0].where.price = {
-        ...(minPrice ? { [Op.gte]: parseFloat(minPrice) } : {}),
-        ...(maxPrice ? { [Op.lte]: parseFloat(maxPrice) } : {})
-      };
-    }
 
     const products = await Product.findAll({
       where: whereCondition,
@@ -314,13 +339,12 @@ exports.uploadImage = async (req, res) => {
   }
 };
 
-// Search products
+
 exports.searchProducts = async (req, res) => {
   try {
     const { q, minPrice, maxPrice, brand } = req.query;
     let condition = {};
 
-    // Tìm kiếm theo tên hoặc mô tả sản phẩm
     if (q) {
       condition[Op.or] = [
         {
@@ -336,7 +360,6 @@ exports.searchProducts = async (req, res) => {
       ];
     }
 
-    // Lọc theo thương hiệu
     if (brand) {
       condition.brand = brand;
     }
@@ -346,12 +369,30 @@ exports.searchProducts = async (req, res) => {
       include: [{
         model: ProductVariant,
         required: false,
-        where: minPrice || maxPrice ? {
-          price: {
-            ...(minPrice ? { [Op.gte]: parseFloat(minPrice) } : {}),
-            ...(maxPrice ? { [Op.lte]: parseFloat(maxPrice) } : {})
-          }
-        } : undefined
+        where: {
+          status: 'in_stock',
+          ...(minPrice !== undefined || maxPrice !== undefined ? {
+            [Op.or]: [
+              {
+                discount_price: {
+                  ...(minPrice && minPrice !== 'null' ? { [Op.gte]: parseFloat(minPrice) } : {}),
+                  ...(maxPrice && maxPrice !== 'null' ? { [Op.lte]: parseFloat(maxPrice) } : {})
+                }
+              },
+              {
+                [Op.and]: [
+                  { discount_price: null },
+                  {
+                    price: {
+                      ...(minPrice && minPrice !== 'null' ? { [Op.gte]: parseFloat(minPrice) } : {}),
+                      ...(maxPrice && maxPrice !== 'null' ? { [Op.lte]: parseFloat(maxPrice) } : {})
+                    }
+                  }
+                ]
+              }
+            ]
+          } : {})
+        }
       }],
       order: [['createdAt', 'DESC']]
     });

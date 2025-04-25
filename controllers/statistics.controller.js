@@ -6,21 +6,16 @@ const { Op } = require('sequelize');
 
 exports.getStatistics = async (req, res) => {
   try {
-    // Lấy tổng số sản phẩm
     const totalProducts = await Product.count();
 
-    // Lấy tổng số đơn hàng
     const totalOrders = await Order.count();
 
-    // Lấy tổng số người dùng
     const totalUsers = await User.count();
 
-    // Lấy tổng doanh thu từ các đơn hàng đã giao
     const totalRevenue = await Order.sum('totalAmount', {
       where: { status: 'delivered' }
     });
 
-    // Lấy 5 đơn hàng gần nhất
     const recentOrders = await Order.findAll({
       include: [
         {
@@ -39,7 +34,6 @@ exports.getStatistics = async (req, res) => {
       limit: 5
     });
 
-    // Lấy 5 sản phẩm bán chạy nhất
     const topProducts = await db.orderItems.findAll({
       attributes: [
         'productId',

@@ -4,7 +4,6 @@ const Product = db.products;
 const { Op } = require("sequelize");
 const cloudinary = require('../config/cloudinary.config');
 
-// Tạo biến thể sản phẩm mới
 exports.create = async (req, res) => {
   try {
     const variant = {
@@ -14,6 +13,7 @@ exports.create = async (req, res) => {
       price: req.body.price,
       discount_price: req.body.discount_price,
       stock_quantity: req.body.stock_quantity,
+      status: req.body.stock_quantity > 0 ? 'in_stock' : 'out_of_stock',
       image: req.body.image
     };
 
@@ -21,12 +21,11 @@ exports.create = async (req, res) => {
     res.send(data);
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Có lỗi xảy ra khi tạo biến thể sản phẩm."
+      message: err.message || "Có lỗi xảy ra khi tạo phiên bản sản phẩm."
     });
   }
 };
 
-// Lấy tất cả biến thể của một sản phẩm
 exports.findAllByProduct = async (req, res) => {
   try {
     const productId = req.params.productId;
@@ -36,12 +35,11 @@ exports.findAllByProduct = async (req, res) => {
     res.send(variants);
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Có lỗi xảy ra khi lấy danh sách biến thể."
+      message: err.message || "Có lỗi xảy ra khi lấy danh sách phiên bản."
     });
   }
 };
 
-// Lấy một biến thể theo ID
 exports.findOne = async (req, res) => {
   try {
     const id = req.params.id;
@@ -50,23 +48,22 @@ exports.findOne = async (req, res) => {
       res.send(variant);
     } else {
       res.status(404).send({
-        message: `Không tìm thấy biến thể với id=${id}.`
+        message: `Không tìm thấy phiên bản với id=${id}.`
       });
     }
   } catch (err) {
     res.status(500).send({
-      message: "Lỗi khi lấy biến thể với id=" + id
+      message: "Lỗi khi lấy phiên bản với id=" + id
     });
   }
 };
 
-// Cập nhật biến thể
 exports.update = async (req, res) => {
   try {
     const id = req.params.id;
     const variant = await ProductVariant.findByPk(id);
     if (!variant) {
-      return res.status(404).json({ message: "Không tìm thấy biến thể" });
+      return res.status(404).json({ message: "Không tìm thấy phiên bản" });
     }
 
     const updateData = {
@@ -75,6 +72,7 @@ exports.update = async (req, res) => {
       price: req.body.price,
       discount_price: req.body.discount_price,
       stock_quantity: req.body.stock_quantity,
+      status: req.body.stock_quantity > 0 ? 'in_stock' : 'out_of_stock',
       image: req.body.image
     };
 
@@ -85,7 +83,6 @@ exports.update = async (req, res) => {
   }
 };
 
-// Xóa biến thể
 exports.delete = async (req, res) => {
   try {
     const id = req.params.id;
@@ -95,21 +92,20 @@ exports.delete = async (req, res) => {
 
     if (num == 1) {
       res.send({
-        message: "Biến thể đã được xóa thành công!"
+        message: "phiên bản đã được xóa thành công!"
       });
     } else {
       res.send({
-        message: `Không thể xóa biến thể với id=${id}.`
+        message: `Không thể xóa phiên bản với id=${id}.`
       });
     }
   } catch (err) {
     res.status(500).send({
-      message: "Không thể xóa biến thể với id=" + id
+      message: "Không thể xóa phiên bản với id=" + id
     });
   }
 };
 
-// Lấy các biến thể còn hàng
 exports.getAvailableVariants = async (req, res) => {
   try {
     const productId = req.params.productId;
@@ -122,12 +118,11 @@ exports.getAvailableVariants = async (req, res) => {
     res.send(variants);
   } catch (err) {
     res.status(500).send({
-      message: err.message || "Có lỗi xảy ra khi lấy danh sách biến thể còn hàng."
+      message: err.message || "Có lỗi xảy ra khi lấy danh sách phiên bản còn hàng."
     });
   }
 };
 
-// Upload ảnh biến thể
 exports.uploadImage = async (req, res) => {
   try {
     if (!req.file) {

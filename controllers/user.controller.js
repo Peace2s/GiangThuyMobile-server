@@ -3,7 +3,6 @@ const User = db.users;
 const { Op } = require("sequelize");
 const bcrypt = require('bcryptjs');
 
-// Lấy danh sách người dùng (cho admin)
 exports.getAllUsers = async (req, res) => {
   try {
     const { page = 1, limit = 10, search } = req.query;
@@ -41,7 +40,6 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// Lấy thông tin chi tiết người dùng
 exports.getUserById = async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id, {
@@ -59,7 +57,6 @@ exports.getUserById = async (req, res) => {
   }
 };
 
-// Cập nhật thông tin người dùng
 exports.updateUser = async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id);
@@ -76,14 +73,12 @@ exports.updateUser = async (req, res) => {
       role
     };
 
-    // Nếu có cập nhật mật khẩu
     if (password) {
       updateData.password = await bcrypt.hash(password, 10);
     }
 
     await user.update(updateData);
 
-    // Loại bỏ password trước khi trả về
     const { password: _, ...userWithoutPassword } = user.toJSON();
     res.status(200).json(userWithoutPassword);
   } catch (error) {
@@ -92,7 +87,6 @@ exports.updateUser = async (req, res) => {
   }
 };
 
-// Xóa người dùng
 exports.deleteUser = async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id);
@@ -100,7 +94,6 @@ exports.deleteUser = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy người dùng' });
     }
 
-    // Kiểm tra nếu là admin
     if (user.role === 'admin') {
       return res.status(403).json({ message: 'Không thể xóa tài khoản admin' });
     }
