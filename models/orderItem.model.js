@@ -54,7 +54,8 @@ const OrderItem = sequelize.define('OrderItem', {
     allowNull: false
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  tableName: 'order_items'
 });
 
 module.exports = OrderItem; 

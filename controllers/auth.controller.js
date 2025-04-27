@@ -7,7 +7,7 @@ const { generateRandomPassword } = require('../utils/helpers');
 
 exports.register = async (req, res) => {
   try {
-    const { fullName, email, phone, password } = req.body;
+    const { fullName, email, password, phone, address } = req.body;
 
     // Kiểm tra email đã tồn tại
     const existingUser = await User.findOne({ where: { email } });
@@ -22,8 +22,9 @@ exports.register = async (req, res) => {
     const user = await User.create({
       fullName,
       email,
-      phone,
-      password: hashedPassword
+      phone: phone || null,
+      password: hashedPassword,
+      address: address || null
     });
 
     res.status(201).json({
@@ -160,7 +161,7 @@ exports.forgotPassword = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const { fullName, phone } = req.body;
+    const { fullName, phone, address } = req.body;
     const userId = req.user.id;
 
     const user = await User.findByPk(userId);
@@ -171,7 +172,7 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
-    await user.update({ fullName, phone });
+    await user.update({ fullName, phone, address });
 
     res.json({ 
       success: true, 

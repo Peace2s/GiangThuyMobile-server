@@ -25,11 +25,11 @@ const ProductVariant = sequelize.define('productVariant', {
     allowNull: false
   },
   price: {
-    type: DataTypes.DECIMAL(10, 2),
+    type: DataTypes.DECIMAL(10, 0),
     allowNull: false
   },
   discount_price: {
-    type: DataTypes.DECIMAL(10, 2),
+    type: DataTypes.DECIMAL(10, 0),
     allowNull: true
   },
   stock_quantity: {

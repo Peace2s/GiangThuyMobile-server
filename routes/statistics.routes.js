@@ -6,5 +6,6 @@ const adminMiddleware = require('../middleware/admin.middleware');
 router.use(adminMiddleware);
 
 router.get('/', statisticsController.getStatistics);
+router.get('/monthly-revenue', statisticsController.getMonthlyRevenue);
 
 module.exports = router; 

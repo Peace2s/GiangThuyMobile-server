@@ -35,7 +35,7 @@ app.use('/api/variants', productVariantRoutes);
 app.use('/api/users', userRoutes);
 
 // Sync database
-db.sequelize.sync()
+db.sequelize.sync({ alter: true })
   .then(() => {
     console.log("Database synced successfully.");
   })

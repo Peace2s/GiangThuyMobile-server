@@ -3,6 +3,7 @@ const Order = db.orders;
 const Product = db.products;
 const User = db.users;
 const { Op } = require('sequelize');
+const { sequelize } = db;
 
 exports.getStatistics = async (req, res) => {
   try {
@@ -13,7 +14,11 @@ exports.getStatistics = async (req, res) => {
     const totalUsers = await User.count();
 
     const totalRevenue = await Order.sum('totalAmount', {
-      where: { status: 'delivered' }
+      where: {
+        status: {
+          [Op.ne]: 'cancelled'
+        }
+      }
     });
 
     const recentOrders = await Order.findAll({
@@ -64,9 +69,36 @@ exports.getStatistics = async (req, res) => {
     });
   } catch (error) {
     console.error('Error getting statistics:', error);
-    res.status(500).json({ 
-      message: 'Lỗi server', 
-      error: error.message 
+    res.status(500).json({
+      message: 'Lỗi server',
+      error: error.message
     });
+  }
+};
+
+exports.getMonthlyRevenue = async (req, res) => {
+  try {
+    const monthlyRevenue = await Order.findAll({
+      attributes: [
+        [sequelize.fn('DATE_FORMAT', sequelize.col('createdAt'), '%Y-%m'), 'month'],
+        [sequelize.fn('SUM', sequelize.col('totalAmount')), 'revenue']
+      ],
+      where: {
+        status: {
+          [Op.ne]: 'cancelled'
+        }
+      },
+      group: ['month'],
+      order: [['month', 'ASC']]
+    });
+
+    const formattedData = monthlyRevenue.map(item => ({
+      month: item.getDataValue('month'),
+      revenue: parseFloat(item.getDataValue('revenue')) || 0
+    }));
+
+    res.json(formattedData);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 }; 

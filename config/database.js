@@ -2,11 +2,11 @@ require('dotenv').config();
 const Sequelize = require("sequelize");
 
 const sequelize = new Sequelize(
-  process.env.DB_NAME || "phone_shop",
-  process.env.DB_USER || "root",
-  process.env.DB_PASSWORD || "",
+  process.env.MYSQLDATABASE || "phone_shop",
+  process.env.MYSQLUSER || "root",
+  process.env.MYSQLPASSWORD || "",
   {
-    host: process.env.DB_HOST || "localhost",
+    host: process.env.MYSQLHOST || "localhost",
     dialect: "mysql",
     pool: {
       max: 5,
