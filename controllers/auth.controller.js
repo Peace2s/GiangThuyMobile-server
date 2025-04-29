@@ -161,35 +161,67 @@ exports.forgotPassword = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
+    console.log('Update profile request body:', req.body);
     const { fullName, phone, address } = req.body;
     const userId = req.user.id;
 
+    console.log('User ID:', userId);
+
+    // Kiểm tra dữ liệu đầu vào
+    if (!fullName || !phone) {
+      console.log('Missing required fields:', { fullName, phone });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Vui lòng cung cấp đầy đủ thông tin' 
+      });
+    }
+
+    // Kiểm tra định dạng số điện thoại
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phoneRegex.test(phone)) {
+      console.log('Invalid phone format:', phone);
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Số điện thoại không hợp lệ' 
+      });
+    }
+
     const user = await User.findByPk(userId);
     if (!user) {
+      console.log('User not found:', userId);
       return res.status(404).json({ 
         success: false, 
         message: 'Người dùng không tồn tại' 
       });
     }
 
-    await user.update({ fullName, phone, address });
+    console.log('Updating user:', { userId, fullName, phone, address });
+
+    // Cập nhật thông tin
+    await user.update({ 
+      fullName, 
+      phone, 
+      address: address || null 
+    });
+
+    // Lấy thông tin user đã cập nhật
+    const updatedUser = await User.findByPk(userId, {
+      attributes: { exclude: ['password'] }
+    });
+
+    console.log('User updated successfully:', updatedUser);
 
     res.json({ 
       success: true, 
       message: 'Cập nhật thông tin thành công',
-      user: {
-        id: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        phone: user.phone,
-        role: user.role
-      }
+      user: updatedUser
     });
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Có lỗi xảy ra. Vui lòng thử lại sau' 
+      message: 'Có lỗi xảy ra khi cập nhật thông tin',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
