@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 const db = require("./models");
@@ -25,6 +26,7 @@ const orderRoutes = require('./routes/order.routes');
 const statisticsRoutes = require('./routes/statistics.routes');
 const productVariantRoutes = require('./routes/productVariant.routes');
 const userRoutes = require('./routes/user.routes');
+const paymentRoutes = require('./routes/payment.routes');
 
 app.use('/api/products', productRoutes);
 app.use('/api/auth', authRoutes);
@@ -33,6 +35,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/statistics', statisticsRoutes);
 app.use('/api/variants', productVariantRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // Sync database
 db.sequelize.sync({ alter: true })
