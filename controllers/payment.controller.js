@@ -216,4 +216,217 @@ exports.vnpayReturn = async (req, res) => {
     console.error('Error processing VNPay return:', error);
     return res.redirect(`${process.env.CLIENT_URL}/checkout?status=failed&message=Lỗi xử lý thanh toán`);
   }
+};
+
+exports.sepayWebhook = async (req, res) => {
+  try {
+    console.log('Received webhook data:', req.body);
+
+    const {
+      gateway,
+      transactionDate,
+      accountNumber,
+      content,
+      transferType,
+      transferAmount,
+      referenceCode
+    } = req.body;
+
+    // Extract order ID from content
+    const orderIdMatch = content.match(/don hang (\d+)/);
+    if (!orderIdMatch) {
+      console.error('Invalid content format:', content);
+      return res.status(400).json({ message: 'Invalid content format' });
+    }
+    const orderId = orderIdMatch[1];
+
+    console.log('Extracted order ID:', orderId);
+
+    const order = await Order.findOne({
+      where: { id: orderId },
+      include: [{
+        model: OrderItem,
+        as: 'OrderItems',
+        include: [{
+          model: ProductVariant,
+          as: 'productVariant'
+        }]
+      }]
+    });
+
+    if (!order) {
+      console.error('Order not found:', orderId);
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    console.log('Found order:', {
+      orderId: order.id,
+      totalAmount: order.totalAmount,
+      paymentStatus: order.paymentStatus
+    });
+
+    // Verify payment details - only check account number and transfer type
+    const isPaymentValid = 
+      transferType === 'in' && 
+      accountNumber === '0941076269';
+
+    console.log('Payment verification:', {
+      transferType,
+      accountNumber,
+      isPaymentValid
+    });
+
+    if (isPaymentValid) {
+      // Update order status
+      await order.update({
+        status: 'processing',
+        paymentStatus: 'paid',
+        paymentMethod: 'qr_sepay',
+        paymentTransactionId: referenceCode
+      });
+
+      // Emit payment success event
+      const io = req.app.get('io');
+      io.to(`order:${orderId}`).emit('paymentStatusUpdate', {
+        orderId,
+        status: 'paid',
+        message: 'Thanh toán thành công'
+      });
+
+      console.log('Payment processed successfully for order:', orderId);
+      return res.status(200).json({ 
+        message: 'Payment processed successfully',
+        orderId,
+        status: 'paid'
+      });
+    } else {
+      console.error('Payment verification failed:', {
+        orderId,
+        transferType,
+        accountNumber,
+        transferAmount,
+        orderTotalAmount: order.totalAmount
+      });
+
+      // If payment verification failed, restore stock quantity
+      for (const orderItem of order.OrderItems) {
+        if (orderItem.productVariant) {
+          await ProductVariant.update(
+            { 
+              stock_quantity: orderItem.productVariant.stock_quantity + orderItem.quantity,
+              status: 'in_stock'
+            },
+            { where: { id: orderItem.variantId } }
+          );
+        }
+      }
+
+      // Emit payment failure event
+      const io = req.app.get('io');
+      io.to(`order:${orderId}`).emit('paymentStatusUpdate', {
+        orderId,
+        status: 'failed',
+        message: 'Thanh toán thất bại'
+      });
+
+      await order.destroy();
+      return res.status(400).json({ 
+        message: 'Payment verification failed',
+        details: {
+          expected: {
+            accountNumber: '0941076269',
+            transferType: 'in',
+            amount: order.totalAmount
+          },
+          received: {
+            accountNumber,
+            transferType,
+            amount: transferAmount
+          }
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error processing SEpay webhook:', error);
+    return res.status(500).json({ 
+      message: 'Internal server error',
+      error: error.message 
+    });
+  }
+};
+
+exports.cancelSepayOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const userId = req.user.id;
+
+    const order = await Order.findOne({
+      where: { 
+        id: orderId,
+        userId,
+        paymentMethod: 'qr_sepay',
+        status: 'pending'
+      },
+      include: [{
+        model: OrderItem,
+        as: 'OrderItems',
+        include: [{
+          model: ProductVariant,
+          as: 'productVariant'
+        }]
+      }]
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found or cannot be canceled' });
+    }
+
+    // Restore stock quantity for each product variant
+    for (const orderItem of order.OrderItems) {
+      if (orderItem.productVariant) {
+        await ProductVariant.update(
+          { 
+            stock_quantity: orderItem.productVariant.stock_quantity + orderItem.quantity,
+            status: 'in_stock'
+          },
+          { where: { id: orderItem.variantId } }
+        );
+      }
+    }
+
+    // Delete the order
+    await order.destroy();
+
+    return res.status(200).json({ message: 'Order canceled successfully' });
+  } catch (error) {
+    console.error('Error canceling order:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+exports.checkSepayPaymentStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const userId = req.user.id;
+
+    const order = await Order.findOne({
+      where: { 
+        id: orderId,
+        userId,
+        paymentMethod: 'qr_sepay'
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    return res.status(200).json({
+      status: order.status,
+      paymentStatus: order.paymentStatus
+    });
+  } catch (error) {
+    console.error('Error checking payment status:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
 }; 

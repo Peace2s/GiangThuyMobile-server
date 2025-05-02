@@ -410,3 +410,37 @@ exports.searchProducts = async (req, res) => {
     });
   }
 };
+
+exports.adminGetProducts = async (req, res) => {
+  try {
+    let { page = 1, limit = 10, search = '', brand } = req.query;
+    page = parseInt(page);
+    limit = parseInt(limit);
+    const offset = (page - 1) * limit;
+
+    const whereCondition = {};
+    if (search) {
+      whereCondition.name = { [Op.like]: `%${search}%` };
+    }
+    if (brand) {
+      whereCondition.brand = brand;
+    }
+
+    const { count, rows: products } = await Product.findAndCountAll({
+      where: whereCondition,
+      include: [{ model: ProductVariant }],
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset
+    });
+
+    res.status(200).json({
+      products,
+      total: count,
+      currentPage: page,
+      totalPages: Math.ceil(count / limit)
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

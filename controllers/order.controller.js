@@ -100,20 +100,20 @@ exports.createOrder = async (req, res) => {
       }
     }
 
-    await CartItem.destroy({
-      where: { cartId: cart.id }
-    });
+    // await CartItem.destroy({
+    //   where: { cartId: cart.id }
+    // });
 
-    await cart.update({ 
-      status: 'checkout',
-      totalAmount: 0
-    });
+    // await cart.update({ 
+    //   status: 'checkout',
+    //   totalAmount: 0
+    // });
 
-    await Cart.create({
-      userId,
-      status: 'active',
-      totalAmount: 0
-    });
+    // await Cart.create({
+    //   userId,
+    //   status: 'active',
+    //   totalAmount: 0
+    // });
 
     let message = 'Tạo đơn hàng thành công';
     if (outOfStockProducts.length > 0) {
@@ -249,7 +249,7 @@ exports.cancelOrder = async (req, res) => {
 
 exports.getAllOrders = async (req, res) => {
   try {
-    const { page = 1, limit = 10, status, search } = req.query;
+    const { page = 1, limit = 10, status, search, startDate, endDate } = req.query;
     const offset = (page - 1) * limit;
 
     const whereCondition = {};
@@ -262,8 +262,19 @@ exports.getAllOrders = async (req, res) => {
         { shippingAddress: { [Op.like]: `%${search}%` } }
       ];
     }
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      
+      whereCondition.createdAt = {
+        [Op.between]: [start, end]
+      };
+    }
 
-    console.log('Query parameters:', { page, limit, status, search });
+    console.log('Query parameters:', { page, limit, status, search, startDate, endDate });
     console.log('Where condition:', whereCondition);
 
     const { count, rows: orders } = await Order.findAndCountAll({
@@ -334,34 +345,3 @@ exports.updateOrderStatus = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
-
-exports.getOrderStatistics = async (req, res) => {
-  try {
-    const { startDate, endDate } = req.query;
-    
-    const whereCondition = {};
-    if (startDate && endDate) {
-      whereCondition.createdAt = {
-        [Op.between]: [new Date(startDate), new Date(endDate)]
-      };
-    }
-
-    const orders = await Order.findAll({
-      where: whereCondition,
-      attributes: ['status', [sequelize.fn('COUNT', sequelize.col('id')), 'count']],
-      group: ['status']
-    });
-
-    const totalOrders = await Order.count({ where: whereCondition });
-    const totalRevenue = await Order.sum('totalAmount', { where: whereCondition });
-
-    res.status(200).json({
-      orders,
-      totalOrders,
-      totalRevenue
-    });
-  } catch (error) {
-    console.error('Error getting order statistics:', error);
-    res.status(500).json({ message: 'Lỗi server', error: error.message });
-  }
-}; 

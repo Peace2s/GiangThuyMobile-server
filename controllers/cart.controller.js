@@ -273,7 +273,10 @@ exports.clearCart = async (req, res) => {
     const userId = req.user.id;
 
     const cart = await Cart.findOne({
-      where: { userId, status: 'active' }
+      where: { 
+        userId, 
+        status: { [Op.in]: ['active', 'checkout'] }
+      }
     });
 
     if (!cart) {

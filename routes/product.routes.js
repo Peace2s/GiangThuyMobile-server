@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const products = require('../controllers/product.controller.js');
+const adminMiddleware = require('../middleware/admin.middleware');
 
 // Configure multer for image upload
 const storage = multer.diskStorage({
@@ -35,5 +36,7 @@ router.put('/:id', products.update);
 router.delete('/:id', products.delete);
 
 router.post('/upload', upload.single('image'), products.uploadImage);
+
+router.get('/admin/all', adminMiddleware, products.adminGetProducts);
 
 module.exports = router;

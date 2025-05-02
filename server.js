@@ -3,8 +3,19 @@ const express = require("express");
 const cors = require("cors");
 const db = require("./models");
 const path = require("path");
+const http = require('http');
+const socketIo = require('socket.io');
 
 const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: process.env.CLIENT_URL || "http://localhost:8000",
+    methods: ["GET", "POST"],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"]
+  }
+});
 
 // CORS configuration
 app.use(cors());
@@ -17,6 +28,23 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('New client connected');
+
+  socket.on('joinOrderRoom', (orderId) => {
+    socket.join(`order:${orderId}`);
+    console.log(`Client joined order room: ${orderId}`);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected');
+  });
+});
+
+// Make io accessible to routes
+app.set('io', io);
 
 // Routes
 const productRoutes = require('./routes/product.routes');
@@ -48,6 +76,6 @@ db.sequelize.sync({ alter: true })
 
 // Set port and listen for requests
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}.`);
 });

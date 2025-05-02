@@ -13,6 +13,5 @@ router.put('/:orderId/cancel', orderController.cancelOrder);
 
 router.get('/admin/all', adminMiddleware, orderController.getAllOrders);
 router.put('/admin/:orderId/status', adminMiddleware, orderController.updateOrderStatus);
-router.get('/admin/statistics', adminMiddleware, orderController.getOrderStatistics);
 
 module.exports = router; 
