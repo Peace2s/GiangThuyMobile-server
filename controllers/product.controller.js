@@ -34,50 +34,57 @@ exports.create = async (req, res) => {
 
 exports.findAll = async (req, res) => {
   try {
-    const { category, brand, minPrice, maxPrice } = req.query;
+    let { category, brand, minPrice, maxPrice, page = 1, limit = 12 } = req.query;
+    page = parseInt(page);
+    limit = parseInt(limit);
     let condition = {};
-
     if (category) {
       condition.category = category;
     }
-
     if (brand) {
       condition.brand = brand;
     }
-
-    const products = await Product.findAll({
-      where: condition,
-      include: [{
-        model: ProductVariant,
-        where: {
-          status: 'in_stock',
-          ...(minPrice !== undefined || maxPrice !== undefined ? {
-            [Op.or]: [
-              {
-                discount_price: {
-                  ...(minPrice && minPrice !== 'null' ? { [Op.gte]: parseFloat(minPrice) } : {}),
-                  ...(maxPrice && maxPrice !== 'null' ? { [Op.lte]: parseFloat(maxPrice) } : {})
-                }
-              },
-              {
-                [Op.and]: [
-                  { discount_price: null },
-                  {
-                    price: {
-                      ...(minPrice && minPrice !== 'null' ? { [Op.gte]: parseFloat(minPrice) } : {}),
-                      ...(maxPrice && maxPrice !== 'null' ? { [Op.lte]: parseFloat(maxPrice) } : {})
-                    }
-                  }
-                ]
+    const include = [{
+      model: ProductVariant,
+      where: {
+        status: 'in_stock',
+        ...(minPrice !== undefined || maxPrice !== undefined ? {
+          [Op.or]: [
+            {
+              discount_price: {
+                ...(minPrice && minPrice !== 'null' ? { [Op.gte]: parseFloat(minPrice) } : {}),
+                ...(maxPrice && maxPrice !== 'null' ? { [Op.lte]: parseFloat(maxPrice) } : {})
               }
-            ]
-          } : {})
-        }
-      }],
-      order: [['createdAt', 'DESC']]
+            },
+            {
+              [Op.and]: [
+                { discount_price: null },
+                {
+                  price: {
+                    ...(minPrice && minPrice !== 'null' ? { [Op.gte]: parseFloat(minPrice) } : {}),
+                    ...(maxPrice && maxPrice !== 'null' ? { [Op.lte]: parseFloat(maxPrice) } : {})
+                  }
+                }
+              ]
+            }
+          ]
+        } : {})
+      }
+    }];
+    const offset = (page - 1) * limit;
+    const { count, rows: products } = await Product.findAndCountAll({
+      where: condition,
+      include,
+      order: [['createdAt', 'DESC']],
+      limit,
+      offset
     });
-
-    res.send(products);
+    res.json({
+      data: products,
+      total: count,
+      currentPage: page,
+      totalPages: Math.ceil(count / limit)
+    });
   } catch (err) {
     res.status(500).send({
       message: err.message || "Có lỗi xảy ra khi lấy danh sách sản phẩm."
@@ -184,15 +191,25 @@ exports.delete = async (req, res) => {
 
 exports.getAllProducts = async (req, res) => {
   try {
-    const products = await Product.findAll({
+    let { page = 1, limit = 12 } = req.query;
+    page = parseInt(page);
+    limit = parseInt(limit);
+    const offset = (page - 1) * limit;
+    const { count, rows: products } = await Product.findAndCountAll({
       include: [{
         model: ProductVariant,
-        where: {
-          status: 'in_stock'
-        }
-      }]
+        where: { status: 'in_stock' }
+      }],
+      limit,
+      offset,
+      order: [['createdAt', 'DESC']]
     });
-    res.json(products);
+    res.json({
+      data: products,
+      total: count,
+      currentPage: page,
+      totalPages: Math.ceil(count / limit)
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -270,13 +287,10 @@ exports.getNewProducts = async (req, res) => {
 
 exports.getProductsByBrand = async (req, res) => {
   try {
-    const { minPrice, maxPrice } = req.query;
+    const { minPrice, maxPrice, page = 1, limit = 12 } = req.query;
     const brand = req.params.brand;
-
-    const whereCondition = {
-      brand: brand
-    };
-
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const whereCondition = { brand: brand };
     const includeCondition = [{
       model: ProductVariant,
       where: {
@@ -304,13 +318,19 @@ exports.getProductsByBrand = async (req, res) => {
         } : {})
       }
     }];
-
-    const products = await Product.findAll({
+    const { count, rows: products } = await Product.findAndCountAll({
       where: whereCondition,
-      include: includeCondition
+      include: includeCondition,
+      limit: parseInt(limit),
+      offset,
+      order: [['createdAt', 'DESC']]
     });
-
-    res.json(products);
+    res.json({
+      data: products,
+      total: count,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(count / parseInt(limit))
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -339,32 +359,21 @@ exports.uploadImage = async (req, res) => {
   }
 };
 
-
 exports.searchProducts = async (req, res) => {
   try {
-    const { q, minPrice, maxPrice, brand } = req.query;
+    const { q, minPrice, maxPrice, brand, page = 1, limit = 12 } = req.query;
     let condition = {};
-
     if (q) {
       condition[Op.or] = [
-        {
-          name: {
-            [Op.like]: `%${q}%`
-          }
-        },
-        {
-          description: {
-            [Op.like]: `%${q}%`
-          }
-        }
+        { name: { [Op.like]: `%${q}%` } },
+        { description: { [Op.like]: `%${q}%` } }
       ];
     }
-
     if (brand) {
       condition.brand = brand;
     }
-
-    const products = await Product.findAll({
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const { count, rows: products } = await Product.findAndCountAll({
       where: condition,
       include: [{
         model: ProductVariant,
@@ -394,13 +403,16 @@ exports.searchProducts = async (req, res) => {
           } : {})
         }
       }],
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset
     });
-
     res.json({
       success: true,
       data: products,
-      total: products.length
+      total: count,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(count / parseInt(limit))
     });
   } catch (error) {
     console.error('Search error:', error);
