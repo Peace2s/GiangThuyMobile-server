@@ -9,12 +9,7 @@ exports.create = async (req, res) => {
     const product = {
       name: req.body.name,
       description: req.body.description,
-      price: req.body.price,
-      discount_price: req.body.discount_price,
-      stock_quantity: req.body.stock_quantity,
-      status: req.body.stock_quantity > 0 ? 'in_stock' : 'out_of_stock',
-      brand: req.body.brand,
-      storage: req.body.storage,
+      brandId: req.body.brandId,
       screen: req.body.screen,
       processor: req.body.processor,
       ram: req.body.ram,
@@ -23,9 +18,12 @@ exports.create = async (req, res) => {
       image: req.body.image
     };
 
+    console.log('Creating product with data:', product); // Debug log
+
     const data = await Product.create(product);
     res.send(data);
   } catch (err) {
+    console.error('Error creating product:', err); // Debug log
     res.status(500).send({
       message: err.message || "Có lỗi xảy ra khi tạo sản phẩm."
     });
@@ -42,7 +40,7 @@ exports.findAll = async (req, res) => {
       condition.category = category;
     }
     if (brand) {
-      condition.brand = brand;
+      condition.brandId = brand;
     }
     const include = [{
       model: ProductVariant,
@@ -148,7 +146,7 @@ exports.update = async (req, res) => {
       price: req.body.price,
       discount_price: req.body.discount_price,
       stock_quantity: req.body.stock_quantity,
-      brand: req.body.brand,
+      brandId: req.body.brandId,
       storage: req.body.storage,
       screen: req.body.screen,
       processor: req.body.processor,
@@ -290,7 +288,7 @@ exports.getProductsByBrand = async (req, res) => {
     const { minPrice, maxPrice, page = 1, limit = 12 } = req.query;
     const brand = req.params.brand;
     const offset = (parseInt(page) - 1) * parseInt(limit);
-    const whereCondition = { brand: brand };
+    const whereCondition = { brandId: brand };
     const includeCondition = [{
       model: ProductVariant,
       where: {
@@ -370,7 +368,7 @@ exports.searchProducts = async (req, res) => {
       ];
     }
     if (brand) {
-      condition.brand = brand;
+      condition.brandId = brand;
     }
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const { count, rows: products } = await Product.findAndCountAll({
@@ -435,7 +433,7 @@ exports.adminGetProducts = async (req, res) => {
       whereCondition.name = { [Op.like]: `%${search}%` };
     }
     if (brand) {
-      whereCondition.brand = brand;
+      whereCondition.brandId = brand;
     }
 
     const { count, rows: products } = await Product.findAndCountAll({

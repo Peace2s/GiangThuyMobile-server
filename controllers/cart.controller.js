@@ -55,7 +55,7 @@ exports.addToCart = async (req, res) => {
         const newQuantity = cartItem.quantity + quantity;
         if (newQuantity > variant.stock_quantity) {
           return res.status(400).json({
-            message: `Không thể thêm ${quantity} sản phẩm vào giỏ hàng. Số lượng tồn kho không đủ.`
+            message: `Số lượng tồn kho không đủ.`
           });
         }
         await cartItem.update({

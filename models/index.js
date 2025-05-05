@@ -14,6 +14,7 @@ db.cartItems = require('./cartItem.model.js');
 db.orders = require('./order.model.js');
 db.orderItems = require('./orderItem.model.js');
 db.productVariants = require('./productVariant.model.js');
+db.brands = require('./brand.model.js');
 
 // Define relationships
 db.users.hasMany(db.carts, { foreignKey: 'userId' });
@@ -42,5 +43,8 @@ db.orderItems.belongsTo(db.products, { foreignKey: 'productId' });
 
 db.productVariants.hasMany(db.orderItems, { foreignKey: 'variantId' });
 db.orderItems.belongsTo(db.productVariants, { foreignKey: 'variantId' });
+
+db.brands.hasMany(db.products, { foreignKey: 'brandId' });
+db.products.belongsTo(db.brands, { foreignKey: 'brandId' });
 
 module.exports = db;

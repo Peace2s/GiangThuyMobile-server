@@ -15,8 +15,13 @@ const Product = sequelize.define('product', {
     type: DataTypes.TEXT,
     allowNull: true
   },
-  brand: {
-    type: DataTypes.STRING(100)
+  brandId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'brands',
+      key: 'id'
+    }
   },
   screen: {
     type: DataTypes.STRING(255),
