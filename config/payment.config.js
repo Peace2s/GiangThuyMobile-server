@@ -9,10 +9,10 @@ class VNPayService {
     this.vnp_ReturnUrl = process.env.VNPAY_RETURN_URL;
   }
 
-  createPaymentUrl(orderId, amount, orderInfo) {
+  createPaymentUrl(req, orderId, amount, orderInfo) {
     const date = new Date();
     const createDate = moment(date).format('YYYYMMDDHHmmss');
-    const ipAddr = process.env.SERVER_IP;
+    const ipAddr = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
     const vnp_Params = {
       vnp_Version: '2.1.0',
       vnp_Command: 'pay',

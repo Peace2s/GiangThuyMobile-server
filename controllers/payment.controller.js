@@ -100,10 +100,12 @@ exports.createPaymentUrl = async (req, res) => {
     }
 
     const paymentUrl = vnpayService.createPaymentUrl(
+      req,
       order.id,
-      order.totalAmount,
+      totalAmount,
       `Thanh toán đơn hàng #${order.id}`
     );
+    console.log('Payment URL:', paymentUrl);
 
     res.json({ 
       paymentUrl,
@@ -113,7 +115,7 @@ exports.createPaymentUrl = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating payment URL:', error);
-    res.status(500).json({ message: 'Lỗi server', error: error.message });
+    res.status(500).json({ message: 'Lỗi khi tạo URL thanh toán' });
   }
 };
 
