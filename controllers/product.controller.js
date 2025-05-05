@@ -251,7 +251,7 @@ exports.getFeaturedProducts = async (req, res) => {
         [sequelize.literal(`
           (SELECT SUM(quantity) 
            FROM order_items 
-           WHERE order_items.productId = Product.id)
+           WHERE order_items.productId = products.id)
         `), 'DESC']
       ],
       limit: 3
