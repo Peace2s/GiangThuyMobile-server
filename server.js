@@ -68,7 +68,7 @@ app.use('/api/payment', paymentRoutes);
 app.use('/api/brands', brandRoutes);
 
 // Sync database
-db.sequelize.sync({ alter: true })
+db.sequelize.sync({ force: true })
   .then(() => {
     console.log("Database synced successfully.");
   })
