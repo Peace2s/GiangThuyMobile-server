@@ -338,7 +338,20 @@ exports.updateOrderStatus = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy đơn hàng' });
     }
 
-    await order.update({ status });
+    if (status === 'delivered') {
+      await order.update({ 
+        status: 'delivered',
+        paymentStatus: 'paid'
+      });
+    } else if (order.status === 'delivered' && status !== 'delivered' && status !== 'cancelled' && order.paymentMethod === 'cod') {
+      await order.update({ 
+        status,
+        paymentStatus: 'pending'
+      });
+    } else {
+      await order.update({ status });
+    }
+
     res.status(200).json({ message: 'Cập nhật trạng thái đơn hàng thành công' });
   } catch (error) {
     console.error('Error updating order status:', error);

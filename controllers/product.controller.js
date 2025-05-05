@@ -3,6 +3,8 @@ const Product = db.products;
 const ProductVariant = db.productVariants;
 const { Op } = require("sequelize");
 const cloudinary = require('../config/cloudinary.config');
+const sequelize = require('sequelize');
+const OrderItem = db.orderItems;
 
 exports.create = async (req, res) => {
   try {
@@ -237,23 +239,27 @@ exports.getProductById = async (req, res) => {
 exports.getFeaturedProducts = async (req, res) => {
   try {
     const products = await Product.findAll({
-      include: [{
-        model: ProductVariant,
-        where: {
-          status: 'in_stock',
-          discount_price: {
-            [Op.ne]: null
+      include: [
+        {
+          model: ProductVariant,
+          where: {
+            status: 'in_stock'
           }
-        },
-        order: [
-          ['discount_price', 'ASC']
-        ]
-      }],
+        }
+      ],
+      order: [
+        [sequelize.literal(`
+          (SELECT SUM(quantity) 
+           FROM order_items 
+           WHERE order_items.productId = Product.id)
+        `), 'DESC']
+      ],
       limit: 3
     });
 
     res.status(200).json(products);
   } catch (error) {
+    console.error('Error getting featured products:', error);
     res.status(500).json({
       message: error.message || "Có lỗi xảy ra khi lấy sản phẩm nổi bật."
     });
