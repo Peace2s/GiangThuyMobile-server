@@ -9,7 +9,11 @@ exports.create = async (req, res) => {
     });
     res.status(201).json(brand);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    if(error.message === 'Validation error') {
+      res.status(400).json({ message: "Không được thêm thương hiệu trùng lặp" });
+    } else {
+      res.status(500).json({ message: error.message });
+    }
   }
 };
 

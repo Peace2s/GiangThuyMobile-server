@@ -34,6 +34,7 @@ exports.register = async (req, res) => {
         fullName: user.fullName,
         email: user.email,
         phone: user.phone,
+        address: user.address,
         role: user.role
       }
     });
@@ -84,6 +85,7 @@ exports.login = async (req, res) => {
       fullName: user.fullName,
       email: user.email,
       phone: user.phone,
+      address: user.address,
       role: user.role
     }), {
       httpOnly: false, // Cho phép client đọc thông tin user
@@ -100,6 +102,7 @@ exports.login = async (req, res) => {
         fullName: user.fullName,
         email: user.email,
         phone: user.phone,
+        address: user.address,
         role: user.role
       }
     });
