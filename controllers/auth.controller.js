@@ -9,16 +9,47 @@ exports.register = async (req, res) => {
   try {
     const { fullName, email, password, phone, address } = req.body;
 
-    // Kiểm tra email đã tồn tại
+    if (!fullName || !email || !password) {
+      return res.status(400).json({ 
+        message: 'Vui lòng điền đầy đủ thông tin bắt buộc (Họ tên, Email, Mật khẩu)' 
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ 
+        message: 'Email không hợp lệ' 
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ 
+        message: 'Mật khẩu phải có ít nhất 6 ký tự' 
+      });
+    }
+
+    if (phone) {
+      const phoneRegex = /^[0-9]{10}$/;
+      if (!phoneRegex.test(phone)) {
+        return res.status(400).json({ 
+          message: 'Số điện thoại không hợp lệ (phải có 10 chữ số)' 
+        });
+      }
+    }
+
+    if (fullName.length < 2) {
+      return res.status(400).json({ 
+        message: 'Họ tên phải có ít nhất 2 ký tự' 
+      });
+    }
+
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ message: 'Email đã được sử dụng' });
     }
 
-    // Mã hóa mật khẩu
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Tạo user mới
     const user = await User.create({
       fullName,
       email,
