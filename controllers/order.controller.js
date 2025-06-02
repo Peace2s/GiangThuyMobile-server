@@ -8,6 +8,7 @@ const User = db.users;
 const { Op } = require('sequelize');
 const sequelize = require('sequelize');
 const ProductVariant = db.productVariants;
+const cron = require('node-cron');
 
 exports.createOrder = async (req, res) => {
   try {
@@ -43,14 +44,14 @@ exports.createOrder = async (req, res) => {
 
     for (const item of cart.CartItems) {
       if (!item.productVariant) {
-        return res.status(400).json({ 
-          message: `Không tìm thấy biến thể sản phẩm với ID ${item.variantId}` 
+        return res.status(400).json({
+          message: `Không tìm thấy biến thể sản phẩm với ID ${item.variantId}`
         });
       }
 
       if (item.quantity > item.productVariant.stock_quantity) {
-        return res.status(400).json({ 
-          message: `Sản phẩm ${item.product.name} chỉ còn ${item.productVariant.stock_quantity} sản phẩm trong kho` 
+        return res.status(400).json({
+          message: `Sản phẩm ${item.product.name} chỉ còn ${item.productVariant.stock_quantity} sản phẩm trong kho`
         });
       }
     }
@@ -85,7 +86,7 @@ exports.createOrder = async (req, res) => {
       });
 
       await ProductVariant.update(
-        { 
+        {
           stock_quantity: newStockQuantity,
           status: newStockQuantity <= 0 ? 'out_of_stock' : 'in_stock'
         },
@@ -121,16 +122,16 @@ exports.createOrder = async (req, res) => {
       message += `. Lưu ý: Các sản phẩm sau đã hết hàng: ${productNames}`;
     }
 
-    res.status(201).json({ 
+    res.status(201).json({
       message,
       orderId: order.id,
       outOfStockProducts: outOfStockProducts.length > 0 ? outOfStockProducts : null
     });
   } catch (error) {
     console.error('Error creating order:', error);
-    res.status(500).json({ 
-      message: 'Lỗi server', 
-      error: error.message 
+    res.status(500).json({
+      message: 'Lỗi server',
+      error: error.message
     });
   }
 };
@@ -226,7 +227,7 @@ exports.cancelOrder = async (req, res) => {
     for (const item of order.OrderItems) {
       if (item.productVariant) {
         await ProductVariant.update(
-          { 
+          {
             stock_quantity: item.productVariant.stock_quantity + item.quantity,
             status: 'in_stock'
           },
@@ -240,9 +241,9 @@ exports.cancelOrder = async (req, res) => {
     res.json({ message: 'Hủy đơn hàng thành công' });
   } catch (error) {
     console.error('Error cancelling order:', error);
-    res.status(500).json({ 
-      message: 'Lỗi server', 
-      error: error.message 
+    res.status(500).json({
+      message: 'Lỗi server',
+      error: error.message
     });
   }
 };
@@ -265,10 +266,10 @@ exports.getAllOrders = async (req, res) => {
     if (startDate && endDate) {
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
-      
+
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
-      
+
       whereCondition.createdAt = {
         [Op.between]: [start, end]
       };
@@ -320,8 +321,8 @@ exports.getAllOrders = async (req, res) => {
     });
   } catch (error) {
     console.error('Error in getAllOrders:', error);
-    res.status(500).json({ 
-      message: 'Lỗi server', 
+    res.status(500).json({
+      message: 'Lỗi server',
       error: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
@@ -339,12 +340,12 @@ exports.updateOrderStatus = async (req, res) => {
     }
 
     if (status === 'delivered') {
-      await order.update({ 
+      await order.update({
         status: 'delivered',
         paymentStatus: 'paid'
       });
     } else if (order.status === 'delivered' && status !== 'delivered' && status !== 'cancelled' && order.paymentMethod === 'cod') {
-      await order.update({ 
+      await order.update({
         status,
         paymentStatus: 'pending'
       });
@@ -358,3 +359,57 @@ exports.updateOrderStatus = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
+
+exports.deleteUnpaidOrders = async () => {
+  try {
+    const tenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+
+    const orders = await Order.findAll({
+      where: {
+        paymentMethod: ['vnpay', 'qr_sepay'],
+        paymentStatus: 'pending',
+        status: 'pending',
+        createdAt: {
+          [Op.lt]: tenMinutesAgo
+        }
+      },
+      include: [{
+        model: OrderItem,
+        include: [
+          {
+            model: ProductVariant,
+            attributes: ['id', 'stock_quantity']
+          }
+        ]
+      }]
+    });
+
+    for (const order of orders) {
+      for (const item of order.OrderItems) {
+        if (item.productVariant) {
+          await ProductVariant.update(
+            {
+              stock_quantity: item.productVariant.stock_quantity + item.quantity,
+              status: 'in_stock'
+            },
+            { where: { id: item.variantId } }
+          );
+        }
+      }
+
+      await OrderItem.destroy({
+        where: { orderId: order.id }
+      });
+
+      await order.destroy();
+    }
+
+    console.log(`Đã xóa ${orders.length} đơn hàng chưa thanh toán sau 10 phút`);
+  } catch (error) {
+    console.error('Lỗi khi xóa đơn hàng chưa thanh toán:', error);
+  }
+};
+
+cron.schedule('* * * * *', () => {
+  exports.deleteUnpaidOrders();
+});
