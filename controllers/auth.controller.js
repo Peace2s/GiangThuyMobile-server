@@ -10,36 +10,36 @@ exports.register = async (req, res) => {
     const { fullName, email, password, phone, address } = req.body;
 
     if (!fullName || !email || !password) {
-      return res.status(400).json({ 
-        message: 'Vui lòng điền đầy đủ thông tin bắt buộc (Họ tên, Email, Mật khẩu)' 
+      return res.status(400).json({
+        message: 'Vui lòng điền đầy đủ thông tin bắt buộc (Họ tên, Email, Mật khẩu)'
       });
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return res.status(400).json({ 
-        message: 'Email không hợp lệ' 
+      return res.status(400).json({
+        message: 'Email không hợp lệ'
       });
     }
 
     if (password.length < 6) {
-      return res.status(400).json({ 
-        message: 'Mật khẩu phải có ít nhất 6 ký tự' 
+      return res.status(400).json({
+        message: 'Mật khẩu phải có ít nhất 6 ký tự'
       });
     }
 
     if (phone) {
       const phoneRegex = /^[0-9]{10}$/;
       if (!phoneRegex.test(phone)) {
-        return res.status(400).json({ 
-          message: 'Số điện thoại không hợp lệ (phải có 10 chữ số)' 
+        return res.status(400).json({
+          message: 'Số điện thoại không hợp lệ (phải có 10 chữ số)'
         });
       }
     }
 
     if (fullName.length < 2) {
-      return res.status(400).json({ 
-        message: 'Họ tên phải có ít nhất 2 ký tự' 
+      return res.status(400).json({
+        message: 'Họ tên phải có ít nhất 2 ký tự'
       });
     }
 
@@ -107,7 +107,7 @@ exports.login = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 24 * 60 * 60 * 1000 
+      maxAge: 24 * 60 * 60 * 1000
     });
 
     // Thiết lập cookie cho thông tin người dùng
@@ -145,32 +145,31 @@ exports.login = async (req, res) => {
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
+    console.log('Email nhận được:', email);
 
-    // Tìm user theo email
     const user = await User.findOne({ where: { email } });
+    console.log('Query result:', user);
+
     if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Email không tồn tại trong hệ thống' 
+      console.log('Không tìm thấy user với email:', email);
+      return res.status(404).json({
+        success: false,
+        message: 'Email không tồn tại trong hệ thống'
       });
     }
 
-    // Tạo mật khẩu mới ngẫu nhiên
     const newPassword = generateRandomPassword(8);
-    
-    // Mã hóa mật khẩu mới
+
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    
-    // Cập nhật mật khẩu mới cho user
+
     await user.update({ password: hashedPassword });
 
-    // Gửi email chứa mật khẩu mới
     const emailData = {
       to: email,
       subject: 'Đặt lại mật khẩu',
       html: `
         <h2>Đặt lại mật khẩu</h2>
-        <p>Xin chào ${user.name},</p>
+        <p>Xin chào ${user.fullName},</p>
         <p>Mật khẩu mới của bạn là: <strong>${newPassword}</strong></p>
         <p>Vui lòng đăng nhập và thay đổi mật khẩu ngay sau khi nhận được email này.</p>
         <p>Trân trọng,</p>
@@ -180,15 +179,15 @@ exports.forgotPassword = async (req, res) => {
 
     await sendEmail(emailData);
 
-    res.json({ 
-      success: true, 
-      message: 'Mật khẩu mới đã được gửi đến email của bạn' 
+    res.json({
+      success: true,
+      message: 'Mật khẩu mới đã được gửi đến email của bạn'
     });
   } catch (error) {
     console.error('Forgot password error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Có lỗi xảy ra. Vui lòng thử lại sau' 
+    res.status(500).json({
+      success: false,
+      message: 'Có lỗi xảy ra. Vui lòng thử lại sau'
     });
   }
 };
@@ -201,59 +200,55 @@ exports.updateProfile = async (req, res) => {
 
     console.log('User ID:', userId);
 
-    // Kiểm tra dữ liệu đầu vào
     if (!fullName || !phone) {
       console.log('Missing required fields:', { fullName, phone });
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Vui lòng cung cấp đầy đủ thông tin' 
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng cung cấp đầy đủ thông tin'
       });
     }
 
-    // Kiểm tra định dạng số điện thoại
     const phoneRegex = /^[0-9]{10}$/;
     if (!phoneRegex.test(phone)) {
       console.log('Invalid phone format:', phone);
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Số điện thoại không hợp lệ' 
+      return res.status(400).json({
+        success: false,
+        message: 'Số điện thoại không hợp lệ'
       });
     }
 
     const user = await User.findByPk(userId);
     if (!user) {
       console.log('User not found:', userId);
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Người dùng không tồn tại' 
+      return res.status(404).json({
+        success: false,
+        message: 'Người dùng không tồn tại'
       });
     }
 
     console.log('Updating user:', { userId, fullName, phone, address });
 
-    // Cập nhật thông tin
-    await user.update({ 
-      fullName, 
-      phone, 
-      address: address || null 
+    await user.update({
+      fullName,
+      phone,
+      address: address || null
     });
 
-    // Lấy thông tin user đã cập nhật
     const updatedUser = await User.findByPk(userId, {
       attributes: { exclude: ['password'] }
     });
 
     console.log('User updated successfully:', updatedUser);
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Cập nhật thông tin thành công',
       user: updatedUser
     });
   } catch (error) {
     console.error('Update profile error:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: 'Có lỗi xảy ra khi cập nhật thông tin',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
@@ -267,18 +262,18 @@ exports.changePassword = async (req, res) => {
 
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Người dùng không tồn tại' 
+      return res.status(404).json({
+        success: false,
+        message: 'Người dùng không tồn tại'
       });
     }
 
     // Kiểm tra mật khẩu cũ
     const isValidPassword = await bcrypt.compare(oldPassword, user.password);
     if (!isValidPassword) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Mật khẩu hiện tại không đúng' 
+      return res.status(400).json({
+        success: false,
+        message: 'Mật khẩu hiện tại không đúng'
       });
     }
 
@@ -286,15 +281,15 @@ exports.changePassword = async (req, res) => {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await user.update({ password: hashedPassword });
 
-    res.json({ 
-      success: true, 
-      message: 'Đổi mật khẩu thành công' 
+    res.json({
+      success: true,
+      message: 'Đổi mật khẩu thành công'
     });
   } catch (error) {
     console.error('Change password error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Có lỗi xảy ra. Vui lòng thử lại sau' 
+    res.status(500).json({
+      success: false,
+      message: 'Có lỗi xảy ra. Vui lòng thử lại sau'
     });
   }
 }; 

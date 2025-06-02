@@ -16,7 +16,7 @@ const sendEmail = async (emailData) => {
     const { to, subject, html } = emailData;
     
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: "Giang Thuy Mobile <" + process.env.EMAIL_USER + ">",
       to,
       subject,
       html
