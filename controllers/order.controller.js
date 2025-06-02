@@ -410,6 +410,6 @@ exports.deleteUnpaidOrders = async () => {
   }
 };
 
-cron.schedule('* * * * *', () => {
-  exports.deleteUnpaidOrders();
-});
+// cron.schedule('* * * * *', () => {
+//   exports.deleteUnpaidOrders();
+// });
