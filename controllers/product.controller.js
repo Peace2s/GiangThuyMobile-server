@@ -447,15 +447,16 @@ exports.adminGetProducts = async (req, res) => {
       include: [{ model: ProductVariant }],
       order: [['createdAt', 'DESC']],
       limit,
-      offset
+      offset,
+      distinct: true
     });
-
     res.status(200).json({
       products,
       total: count,
       currentPage: page,
       totalPages: Math.ceil(count / limit)
     });
+    
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
