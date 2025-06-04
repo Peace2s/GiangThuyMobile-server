@@ -47,7 +47,7 @@ exports.findAll = async (req, res) => {
     const include = [{
       model: ProductVariant,
       where: {
-        status: 'in_stock',
+        //status: 'in_stock',
         ...(minPrice !== undefined || maxPrice !== undefined ? {
           [Op.or]: [
             {
@@ -298,7 +298,7 @@ exports.getProductsByBrand = async (req, res) => {
     const includeCondition = [{
       model: ProductVariant,
       where: {
-        status: 'in_stock',
+        //status: 'in_stock',
         ...(minPrice !== undefined || maxPrice !== undefined ? {
           [Op.or]: [
             {
@@ -383,7 +383,7 @@ exports.searchProducts = async (req, res) => {
         model: ProductVariant,
         required: false,
         where: {
-          status: 'in_stock',
+          //status: 'in_stock',
           ...(minPrice !== undefined || maxPrice !== undefined ? {
             [Op.or]: [
               {
