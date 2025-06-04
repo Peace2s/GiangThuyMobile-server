@@ -77,7 +77,8 @@ exports.findAll = async (req, res) => {
       include,
       order: [['createdAt', 'DESC']],
       limit,
-      offset
+      offset,
+      distinct: true
     });
     res.json({
       data: products,
@@ -202,7 +203,8 @@ exports.getAllProducts = async (req, res) => {
       }],
       limit,
       offset,
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'DESC']],
+      distinct: true
     });
     res.json({
       data: products,
@@ -333,7 +335,8 @@ exports.getProductsByBrand = async (req, res) => {
       data: products,
       total: count,
       currentPage: parseInt(page),
-      totalPages: Math.ceil(count / parseInt(limit))
+      totalPages: Math.ceil(count / parseInt(limit)),
+      distinct: true
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -409,7 +412,8 @@ exports.searchProducts = async (req, res) => {
       }],
       order: [['createdAt', 'DESC']],
       limit: parseInt(limit),
-      offset
+      offset,
+      distinct: true
     });
     res.json({
       success: true,
