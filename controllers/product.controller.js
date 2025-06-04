@@ -374,7 +374,6 @@ exports.searchProducts = async (req, res) => {
     if (q) {
       condition[Op.or] = [
         { name: { [Op.like]: `%${q}%` } },
-        { description: { [Op.like]: `%${q}%` } }
       ];
     }
     if (brand) {

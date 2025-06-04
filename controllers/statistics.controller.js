@@ -101,4 +101,83 @@ exports.getMonthlyRevenue = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+};
+
+exports.getRevenueByDateRange = async (req, res) => {
+  try {
+    let { startDate, endDate, groupBy = 'day' } = req.query;
+    
+    if (!startDate || !endDate) {
+      const currentYear = new Date().getFullYear();
+      startDate = `${currentYear}-01-01`;
+      endDate = `${currentYear}-12-31`;
+      groupBy = 'month';
+    }
+
+    let dateFormat;
+    let groupByFormat;
+    
+    switch(groupBy) {
+      case 'day':
+        dateFormat = '%Y-%m-%d';
+        groupByFormat = 'DATE(createdAt)';
+        break;
+      case 'month':
+        dateFormat = '%Y-%m';
+        groupByFormat = 'DATE_FORMAT(createdAt, "%Y-%m")';
+        break;
+      case 'year':
+        dateFormat = '%Y';
+        groupByFormat = 'YEAR(createdAt)';
+        break;
+      default:
+        dateFormat = '%Y-%m-%d';
+        groupByFormat = 'DATE(createdAt)';
+    }
+
+    const revenueData = await Order.findAll({
+      attributes: [
+        [sequelize.literal(`DATE_FORMAT(createdAt, '${dateFormat}')`), 'date'],
+        [sequelize.fn('SUM', sequelize.col('totalAmount')), 'revenue']
+      ],
+      where: {
+        createdAt: {
+          [Op.between]: [startDate, endDate]
+        },
+        status: {
+          [Op.ne]: 'cancelled'
+        }
+      },
+      group: [sequelize.literal(`DATE_FORMAT(createdAt, '${dateFormat}')`)],
+      order: [[sequelize.literal('date'), 'ASC']],
+      raw: true
+    });
+
+    const totalRevenue = await Order.sum('totalAmount', {
+      where: {
+        createdAt: {
+          [Op.between]: [startDate, endDate]
+        },
+        status: {
+          [Op.ne]: 'cancelled'
+        }
+      }
+    });
+
+    const formattedData = revenueData.map(item => ({
+      date: item.date,
+      revenue: parseFloat(item.revenue) || 0
+    }));
+
+    res.json({
+      data: formattedData,
+      totalRevenue: totalRevenue || 0,
+      startDate,
+      endDate,
+      groupBy
+    });
+  } catch (error) {
+    console.error('Error getting revenue by date range:', error);
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
 }; 
