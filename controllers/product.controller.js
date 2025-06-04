@@ -94,12 +94,12 @@ exports.findAll = async (req, res) => {
 
 exports.findByCategory = async (req, res) => {
   const { category } = req.params;
-  
+
   try {
     const products = await Product.findAll({
       where: { category: category }
     });
-    
+
     res.send(products);
   } catch (err) {
     res.status(500).send({
@@ -110,17 +110,17 @@ exports.findByCategory = async (req, res) => {
 
 exports.findOne = async (req, res) => {
   const id = req.params.id;
-  
+
   try {
     const product = await Product.findByPk(id, {
       include: [{
         model: ProductVariant,
         where: {
-          status: 'in_stock'
+          //status: 'in_stock'
         }
       }]
     });
-    
+
     if (product) {
       res.send(product);
     } else {
@@ -198,7 +198,7 @@ exports.getAllProducts = async (req, res) => {
     const { count, rows: products } = await Product.findAndCountAll({
       include: [{
         model: ProductVariant,
-        where: { status: 'in_stock' }
+        //where: { status: 'in_stock' }
       }],
       limit,
       offset,
@@ -221,7 +221,7 @@ exports.getProductById = async (req, res) => {
       include: [{
         model: ProductVariant,
         where: {
-          status: 'in_stock'
+          //status: 'in_stock'
         }
       }]
     });
