@@ -45,13 +45,32 @@ exports.getStatistics = async (req, res) => {
         [db.sequelize.fn('SUM', db.sequelize.col('quantity')), 'sold'],
         [db.sequelize.fn('SUM', db.sequelize.col('totalPrice')), 'revenue']
       ],
-      include: [{
-        model: Product,
-        attributes: ['id', 'name']
-      }],
-      group: ['productId'],
+      include: [
+        {
+          model: Product,
+          attributes: ['id', 'name']
+        }
+      ],
+      where: {
+        '$Order.status$': {
+          [Op.ne]: 'cancelled'
+        }
+      },
+      include: [
+        {
+          model: db.orders,
+          as: 'Order',
+          attributes: []
+        },
+        {
+          model: Product,
+          attributes: ['id', 'name']
+        }
+      ],
+      group: ['OrderItem.productId', 'product.id', 'product.name'],
       order: [[db.sequelize.literal('sold'), 'DESC']],
-      limit: 5
+      limit: 5,
+      raw: true
     });
 
     res.status(200).json({
@@ -61,10 +80,10 @@ exports.getStatistics = async (req, res) => {
       totalRevenue: totalRevenue || 0,
       recentOrders,
       topProducts: topProducts.map(item => ({
-        id: item.product.id,
-        name: item.product.name,
-        sold: item.getDataValue('sold'),
-        revenue: item.getDataValue('revenue')
+        id: item['product.id'],
+        name: item['product.name'],
+        sold: parseInt(item.sold) || 0,
+        revenue: parseFloat(item.revenue) || 0
       }))
     });
   } catch (error) {
