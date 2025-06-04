@@ -450,7 +450,7 @@ exports.adminGetProducts = async (req, res) => {
     const { count, rows: products } = await Product.findAndCountAll({
       where: whereCondition,
       include: [{ model: ProductVariant }],
-      order: [['createdAt', 'DESC']],
+      order: [['id', 'DESC']],
       limit,
       offset,
       distinct: true
