@@ -329,7 +329,8 @@ exports.getProductsByBrand = async (req, res) => {
       include: includeCondition,
       limit: parseInt(limit),
       offset,
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'DESC']],
+      distinct: true
     });
     res.json({
       data: products,
